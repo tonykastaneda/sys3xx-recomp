@@ -493,7 +493,10 @@ void hBulkTransfer(ppu_context* ctx)
     int32_t count = 0;
     if (g_pipes[id].dev == kUsio) {
         if (g_pipes[id].endpoint == 0x01) count = bulkOut(G(buf), len);
-        else if (g_pipes[id].endpoint == 0x82) count = bulkIn(G(buf), len);
+        else if (g_pipes[id].endpoint == 0x82) {
+            if (g_cmd.reg == 0x1000) { static int n; if (n < 6 && ++n) log("input read into guest buf 0x%08X len %u", buf, len); }
+            count = bulkIn(G(buf), len);
+        }
     } else {
         log("bulk on USB key ep 0x%02X len %u (ignored)", g_pipes[id].endpoint, len);
     }
@@ -608,7 +611,9 @@ void hPamfGetStreamOffsetAndSize(ppu_context* ctx)
     const uint32_t p = (uint32_t)ctx->gpr[3], off = (uint32_t)ctx->gpr[5], sz = (uint32_t)ctx->gpr[6];
     if (!p || memcmp(G(p), "PAMF", 4) != 0) { RET(0x80610504); return; }
     if (off) wr64(off, (uint64_t)rd32(p + 8) << 11);
-    if (sz) wr64(sz, (uint64_t)rd32(p + 12) << 11);
+    if (sz) wr64(sz, getenv("T6_MOVIE_TINY") ? 0x800 : (uint64_t)rd32(p + 12) << 11);
+    log("PamfGetStreamOffsetAndSize hdr=0x%08X off=0x%llX size=0x%llX fileSize=0x%llX", p,
+        (unsigned long long)rd32(p + 8) << 11, (unsigned long long)rd32(p + 12) << 11, (unsigned long long)ctx->gpr[4]);
     RET(0);
 }
 // ---- movies: an empty PAMF reader --------------------------------------------------------
@@ -692,7 +697,10 @@ void hDmuxSetStream(ppu_context* ctx)       // (handle, addr, size, discontinuit
     const uint32_t h = (uint32_t)ctx->gpr[3];
     Dmux* d = dmuxOf(h);
     if (!d) { RET(0x80610201u); return; }
-    if (d->cb) queueCall(d->cb, h, dmuxMsg(0, ctx->gpr[7]), d->arg);     // DEMUX_DONE
+    if (d->cb) {
+        queueCall(d->cb, h, dmuxMsg(0, ctx->gpr[7]), d->arg);            // DEMUX_DONE
+        queueCall(d->cb, h, dmuxMsg(2, ctx->gpr[7]), d->arg);            // PROG_END_CODE: the movie is over
+    }
     RET(0);
 }
 void hDmuxEnableEs(ppu_context* ctx)        // (handle, filterId*, esRes*, esCb*, specificInfo, esHandle*)

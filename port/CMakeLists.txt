@@ -134,7 +134,7 @@ set(PS3RECOMP_SCAFFOLD
 # match, which is worse than shipping none. Both the table and the job-module
 # registry self-register from constructors and are therefore optional -- a tree
 # that has not lifted its SPU images yet configures and links without them.
-set(SPU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/spu" CACHE PATH
+set(SPU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../spu" CACHE PATH
     "Directory holding the lifted SPU images (<SPU_DIR>/<image>/spu_recomp.c)")
 option(PORT_ENABLE_SPU "Compile and register the title's lifted SPU images" ON)
 
@@ -160,7 +160,7 @@ elseif(PORT_ENABLE_SPU)
              "${PS3RECOMP_DIR}/runtime/spu/spu_dispatch_mt.c")
         # Generated beside the lift; each is present only once its generator
         # has been run, so each is included only if it is actually here.
-        foreach(gen IN ITEMS spu_workloads.c jobmods_register.c taskset_policy_bytes.c)
+        foreach(gen IN ITEMS spu_workloads.c t6_spu_jobs.c jobmods_register.c taskset_policy_bytes.c)
             if(EXISTS "${SPU_DIR}/${gen}")
                 list(APPEND SPU_SOURCES "${SPU_DIR}/${gen}")
             else()
