@@ -37,6 +37,7 @@
  * passthrough to <windows.h>; off Windows the toolkit's shim supplies the same
  * names over pthreads and mmap, so the call sites below are written once. */
 #include "win32_compat.h"
+#include "ps3emu/vm_watch.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -204,6 +205,29 @@ static int t6_usleep_kick(uint32_t, uint64_t)
     return 0;
 }
 
+/* T6_USLEEP_WHO=1: guest usleeps by caller, split by whether the drain is
+ * holding a draw for SPU data at the time, every 5 s. */
+extern "C" volatile long g_rsx_spu_wait;
+static int t6_usleep_who(uint32_t lr, uint64_t)
+{
+    static SRWLOCK mu = SRWLOCK_INIT;
+    static struct { uint32_t lr; unsigned in_wait, other; } h[64];
+    static ULONGLONG t0;
+    AcquireSRWLockExclusive(&mu);
+    for (int i = 0; i < 64; i++)
+        if (h[i].lr == lr || !h[i].lr) { h[i].lr = lr; (g_rsx_spu_wait ? h[i].in_wait : h[i].other)++; break; }
+    const ULONGLONG now = GetTickCount64();
+    if (!t0) t0 = now;
+    if (now - t0 >= 5000) {
+        for (int i = 0; i < 64 && h[i].lr; i++)
+            if (h[i].in_wait + h[i].other > 50)
+                fprintf(stderr, "[usleep-who] lr=%08X in-spu-wait %u other %u\n", h[i].lr, h[i].in_wait, h[i].other);
+        memset(h, 0, sizeof h); t0 = now;
+    }
+    ReleaseSRWLockExclusive(&mu);
+    return 0;
+}
+
 extern "C" void t6_prof_watch_self(void);
 static DWORD WINAPI frame_clock(LPVOID)
 {
@@ -331,18 +355,51 @@ static void derive_vfs_root(const char* eboot)
 /* Demand-paging for the flat VM: reserve the whole 4 GB guest space, which
  * costs no commit, and commit each 64 KB page on first access. Every 32-bit
  * guest offset is then valid, so a garbage guest pointer reads zero instead of
- * killing the process. Faults outside the arena fall through untouched. */
+ * killing the process. Faults outside the arena fall through untouched.
+ * A fault on a page the texture write-watch protected goes to the watch
+ * first, and the commit leaves committed pages alone: MEM_COMMIT over one
+ * resets its protection and would silently re-open a watched page. */
 static LONG WINAPI vm_commit_veh(EXCEPTION_POINTERS* ep)
 {
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
         ULONG_PTR fault = ep->ExceptionRecord->ExceptionInformation[1];
         uintptr_t base  = (uintptr_t)vm_base;
         if (vm_base && fault >= base && fault < base + VM_SIZE) {
+            if (vm_watch_fault(fault, ep->ExceptionRecord->ExceptionInformation[0] == 1))
+                return EXCEPTION_CONTINUE_EXECUTION;
             void* page = (void*)(fault & ~(uintptr_t)0xFFFF);
-            if (VirtualAlloc(page, 0x10000, MEM_COMMIT, PAGE_READWRITE))
+            if (vm_commit_reserved(page, 0x10000))
                 return EXCEPTION_CONTINUE_EXECUTION;
         }
     }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+/* A fault nothing handled: say where (module + offset, then a backtrace of
+ * RVAs into t6.exe for tools/sym.py) instead of the process vanishing. */
+static LONG WINAPI crash_filter(EXCEPTION_POINTERS* ep)
+{
+    char* mbase = (char*)GetModuleHandleA(NULL);
+    void* at = ep->ExceptionRecord->ExceptionAddress;
+    HMODULE m = NULL; char name[MAX_PATH] = "?";
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)at, &m) && m)
+        GetModuleFileNameA(m, name, MAX_PATH);
+    const char* b = strrchr(name, '\\');
+    fprintf(stderr, "\n[CRASH] code=%08lX tid=%lu at %s+0x%llX fault-addr=0x%llX\n",
+            (unsigned long)ep->ExceptionRecord->ExceptionCode, GetCurrentThreadId(), b ? b + 1 : name,
+            (unsigned long long)((char*)at - (char*)m),
+            ep->ExceptionRecord->NumberParameters > 1 ? (unsigned long long)ep->ExceptionRecord->ExceptionInformation[1] : 0ull);
+    void* fr[32]; const USHORT n = RtlCaptureStackBackTrace(0, 32, fr, NULL);
+    fprintf(stderr, "[CRASH] bt:");
+    for (USHORT i = 0; i < n; i++) {
+        HMODULE fm = NULL;
+        if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)fr[i], &fm) && fm == (HMODULE)mbase)
+            fprintf(stderr, " rva=0x%llX", (unsigned long long)((char*)fr[i] - mbase));
+        else
+            fprintf(stderr, " ext=%p", fr[i]);
+    }
+    fprintf(stderr, "\n");
+    fflush(stderr);
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
@@ -351,7 +408,12 @@ static bool alloc_guest_vm(void)
 {
 #ifdef _WIN32
     AddVectoredExceptionHandler(1, vm_commit_veh);
+    SetUnhandledExceptionFilter(crash_filter);
     vm_base = (uint8_t*)VirtualAlloc(NULL, VM_SIZE, MEM_RESERVE, PAGE_READWRITE);
+    /* The draw engine's texture and vertex caches skip re-hashing guest bytes
+     * no write has touched (ps3emu/vm_watch.h). Off, T6's fights hashed ~14 MB
+     * of unchanged textures a frame. RSX_TEX_WATCH=0 turns it off. */
+    vm_watch_init(vm_base, VM_SIZE);
     ppu_vm_size = 0;              /* the whole space is backed; no OOB guard needed */
 #else
     /* No vectored exception handlers off Windows, so the arena is committed up
@@ -418,6 +480,7 @@ int main(int argc, char** argv)
      * until the title registers its vblank and flip handlers during init. */
     g_ps3_guest_caller = harness_guest_caller;
     if (getenv("T6_USLEEP_KICK")) g_lv2_usleep_hook = t6_usleep_kick;   /* opt-in: no gain measured */
+    if (getenv("T6_USLEEP_WHO")) g_lv2_usleep_hook = t6_usleep_who;
     CreateThread(NULL, 4u * 1024 * 1024, frame_clock, NULL, 0, NULL);
 
     printf("\n[boot] dispatching entry OPD 0x%08X (stack top 0x%08X)\n\n",

@@ -20,9 +20,15 @@ static volatile DWORD s_watch_list[32]; static volatile long s_watch_n;
 static void sampleThread(HANDLE t, DWORD tid, uintptr_t base, std::unordered_map<uint64_t, unsigned>& hist,
                          std::unordered_map<DWORD, unsigned>& perThread, unsigned& total)
 {
+    /* Only read the context while it is suspended: the bookkeeping below
+     * allocates and takes the loader lock, and a thread stopped holding the
+     * heap or loader lock deadlocked the profiler -- and through the drain,
+     * the game (a fight-load "hang", a boot that never presented). */
     if (SuspendThread(t) == (DWORD)-1) return;
     CONTEXT c{}; c.ContextFlags = CONTEXT_CONTROL;
-    if (GetThreadContext(t, &c)) {
+    const BOOL ok = GetThreadContext(t, &c);
+    ResumeThread(t);
+    if (ok) {
         const uintptr_t rip = (uintptr_t)c.Rip;
         if (rip >= base && rip < base + 0x10000000) { hist[rip - base]++; perThread[tid]++; total++; }
         else {
@@ -33,7 +39,6 @@ static void sampleThread(HANDLE t, DWORD tid, uintptr_t base, std::unordered_map
             s_mod[key]++;
         }
     }
-    ResumeThread(t);
 }
 
 static DWORD WINAPI profThread(LPVOID)
