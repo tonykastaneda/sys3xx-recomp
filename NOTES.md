@@ -34,3 +34,4 @@ Inputs
 - entry 0x704110 (OPD). .text 0x10240..0x661898 (6.4 MB). .rodata 0x10000000, .data 0x100c0000, .bss 0x10127600 (5.6 MB).
 - .spu_image 0x1005e280 (0x54380) + 11 SPURS job binaries in .bin_objs.jobElement/* (SendEvent, njSnowField*, njParticleSpu/*, njCalcBone, kkMob).
 - 43 sections, symbols stripped (no .symtab), .eh_frame present (good for function bounds).
+- 2026-10-29: Toolchain = clang-cl + lld-link copied from LLVM-MinGW's clang-23/ld.lld into ~/tools/clangcl/bin (they need llvm-mingw's bin on PATH for DLLs), MSVC CRT 14.44 + SDK 10.0.26100 via xwin 0.10.0 into ~/tools/xwin/sdk (631 MB; lib/x86_64 renamed to x64 for /winsysroot). cmake/clangcl-xwin.cmake. In Git Bash set MSYS_NO_PATHCONV=1 when passing /flags. No Visual Studio install (user wants light tooling).

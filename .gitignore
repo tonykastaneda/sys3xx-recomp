@@ -18,3 +18,4 @@ reference/
 # Local Claude settings and autonomy hooks
 .claude/settings.local.json
 .claude/hooks/
+recompiled_113/
