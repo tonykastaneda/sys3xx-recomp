@@ -49,3 +49,5 @@ Inputs
   Movies: port has empty PAMF reader + no-op Dmux (movies skipped). Real playback needs PAMF/Dmux/Vdec.
   TODO after rendering: t6.exe launcher defaults (env/args/ini -> RSX_SCALE/RSX_WINDOW/RSX_DISPLAY/RSX_VSYNC, T6_REGION), 4:3 (camera aspect RE), package config.exe next to t6.exe.
   Dev run: tools/run.sh [secs] [log]; screenshots: tools/shot_game.sh; T6_INPUT_SCRIPT="40:coin1,45:start1"; T6_USB_LOG, T6_FPS_LOG, T6_EXE=t6dbg + WATCHDOG_AT.
+- 2026-10-29 05:45 STATUS: PLAYABLE. Attract (notice, logos, title movie via real PAMF demux + FFmpeg), coin/start (JVS switch layout at USIO 0x100..0x104, coins LE u16 at 0x110/0x112), character select, fights with skinned characters (SPURS JOBLIST implemented).
+  PERF: ~13 fps in fights (60 at title). Host CPU/GPU mostly idle -> wait chain: main sys_cond_wait @0x4A22FC ~66 ms/frame, Draw::RequestManager polls usleep(100) on GCM control reg + cellGcmGetLastFlipTime (runtime returns host ns; real = us). Converting flip time broke boot (T6_FLIP_CLOCK, off). Not drain cadence (Sleep 4->1 no change), not vsync, not logging, async chains worse.

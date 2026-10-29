@@ -28,6 +28,8 @@
 extern "C" {
 void t6_movie_tick(void);
 void t6_movie_init(void);
+void t6_prof_start(void);
+void t6_clock_init(void);
 extern uint8_t* vm_base;
 extern PPU_THREAD_LOCAL void (*g_trampoline_fn)(void*);
 extern PPU_THREAD_LOCAL ppu_context* g_active_ctx;
@@ -798,6 +800,8 @@ extern "C" void t6_io_init(const char* iniPath, const char* sramPath)
     loadSram();
     buildDevices();
 
+    t6_prof_start();
+    t6_clock_init();
     t6_movie_init();   // before the empty PAMF/Dmux fallbacks below (first registration wins)
     startThread();     // the worker also runs the demuxer and movie callbacks
     ps3_hle_register_ctx(0xD0E766FEu, "cellUsbdInit", hInit);

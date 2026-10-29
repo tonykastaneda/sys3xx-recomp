@@ -180,6 +180,7 @@ add_library(t6_game OBJECT
     stubs.cpp
     t6_usio.cpp
     t6_movie.cpp
+    t6_prof.cpp
     t6_patches.cpp
     ${PS3RECOMP_SCAFFOLD}
     ${HLE_NID_TABLE}

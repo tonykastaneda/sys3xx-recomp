@@ -94,7 +94,8 @@ uint64_t ppu_guest_call(uint32_t, uint64_t, uint64_t, uint64_t, uint64_t,
 /* The GCM half of the frame clock. */
 void     cellGcmTickVBlank(void);
 void     cellGcmTickFlip(void);
-void     ppu_gcm_pump(void);              /* deliver pending vblank/flip/user callbacks */
+void     ppu_gcm_pump(void);
+void     ppu_waitprof_report(double window_s);              /* deliver pending vblank/flip/user callbacks */
 int      cellGcm_take_flip_pending(void);
 void     cellGcm_rsx_process_fifo(void);      /* drain get -> put */
 unsigned cellGcm_flip_request_count(void);
@@ -200,7 +201,7 @@ static DWORD WINAPI frame_clock(LPVOID)
     ULONGLONG next_tick = GetTickCount64();
 
     for (;;) {
-        Sleep(4);
+        Sleep(1);   /* T6: render passes fence on the drain below; 4 ms per wait capped fights at ~13 fps */
         ULONGLONG now = GetTickCount64();
 
         int fired = 0;
@@ -211,6 +212,9 @@ static DWORD WINAPI frame_clock(LPVOID)
              * The game waits for its vblank counter in sys_cond_wait, a raw
              * syscall, so no guest thread reaches an HLE call that would pump. */
             ppu_gcm_pump();
+            { static ULONGLONG wp_last = 0; static int wp = -1;
+              if (wp < 0) wp = getenv("PPU_WAITPROF") ? 1 : 0;
+              if (wp && GetTickCount64() - wp_last > 5000) { wp_last = GetTickCount64(); ppu_waitprof_report(5.0); } }
             /* Present a pending flip BEFORE draining any further. The flip
              * fires at a get==put frame boundary on the guest thread, so the
              * batch held right now is exactly the completed frame; presenting

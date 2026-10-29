@@ -512,3 +512,41 @@ extern "C" void t6_movie_init(void)
     ps3_hle_register_ctx(0x24EA6474u, "cellDmuxReleaseAu", hDmuxReleaseAu);
     ps3_hle_register_ctx(0xEBB3B2BDu, "cellDmuxFlushEs", hDmuxFlushEs);
 }
+
+// ---- clocks ----------------------------------------------------------------------------
+// cellGcmGetLastFlipTime must be in the same microsecond base as sys_time_get_system_time
+// (T6's draw manager times frames against it); the runtime returns raw host nanoseconds.
+extern "C" {
+int64_t ps3_guest_ticks(int64_t host_ticks);
+uint64_t cellGcmGetLastFlipTime(void);
+}
+namespace {
+LARGE_INTEGER g_qpcFreq, g_qpcBase;
+void clockInit()
+{
+    if (!g_qpcFreq.QuadPart) { QueryPerformanceFrequency(&g_qpcFreq); QueryPerformanceCounter(&g_qpcBase); }
+}
+uint64_t guestUs()
+{
+    clockInit();
+    LARGE_INTEGER now; QueryPerformanceCounter(&now);
+    const int64_t g = ps3_guest_ticks(now.QuadPart) - ps3_guest_ticks(g_qpcBase.QuadPart);
+    return g > 0 ? (uint64_t)((double)g * 1e6 / (double)g_qpcFreq.QuadPart) : 0;
+}
+void hSystemTime(ppu_context* ctx) { ctx->gpr[3] = guestUs(); }
+void hLastFlipTime(ppu_context* ctx)
+{
+    clockInit();
+    const uint64_t ns = cellGcmGetLastFlipTime();
+    const double baseNs = (double)ps3_guest_ticks(g_qpcBase.QuadPart) * 1e9 / (double)g_qpcFreq.QuadPart;
+    ctx->gpr[3] = ns > baseNs ? (uint64_t)(((double)ns - baseNs) / 1000.0) : 0;
+}
+}  // namespace
+
+extern "C" void t6_clock_init(void)
+{
+    clockInit();
+    if (!getenv("T6_FLIP_CLOCK")) return;   // experimental: breaks boot as is
+    if (getenv("T6_SYS_CLOCK")) ps3_hle_register_ctx(0x8461E528u, "sys_time_get_system_time", hSystemTime);
+    ps3_hle_register_ctx(0x21AC3697u, "cellGcmGetLastFlipTime", hLastFlipTime);
+}
