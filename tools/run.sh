@@ -9,5 +9,6 @@ export PS3_HDD0_ROOT="$(cygpath -m "$root/game/dev_hdd0")"
 export PS3_DEV_FLASH="${PS3_DEV_FLASH:-E:/SYSTEMS/TEKKNOPAROT/RPCS3/dev_flash}"
 export MSYS2_ENV_CONV_EXCL="PS3_BOOT_PATH;PS3_ARGV"
 export PS3_BOOT_PATH="/dev_hdd0/game/SCEEXE000/USRDIR/GAME_208.SELF"
+export SPURS_QUEUE_LAYOUT="${SPURS_QUEUE_LAYOUT:-2}" SPURS_QUEUE_PUSH="${SPURS_QUEUE_PUSH:-1}" SPURS_JC_DONE_EVENTS="${SPURS_JC_DONE_EVENTS:-0}"
 export PS3_ARGV="${PS3_ARGV:-ver=206;romver=B23;livemon=0;usbid=026450000000;usbnum=1;idpath=/dev_usb000/T6.ID;datainfo=DINF_004.BIN}"
 timeout "$secs" "$root/build/${T6_EXE:-t6}.exe" "$(cygpath -m "$root/elf/GAME_208.elf")" > "$log" 2>&1

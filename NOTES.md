@@ -28,6 +28,15 @@ Started from t6-arcade-recomp (port/, tools/, config/, ps3recomp branch t6). Wha
   raced the PPU's multi-word update, the walk parked where no work came, and flag B was never
   set. The poller now waits 200 us before restarting: 4/4 runs fine (was 2/2 frozen). Logging
   (SPURS_SPIN_LOG) also hid it. Coin-up -> char select -> fights works; ~56-58 fps in fights.
-- Open: sound (bnusCore on a SPURS taskset + cellSpursQueue; cellSpursQueuePopBody 0x91066667
-  missing; task image 1 branches into unlifted LS 0x15088), null call in PS3AIO init
-  (func_00470FE8), unresolved sysPrxForUser 0xE76964F5, aspect constants for 4:3, config/package.
+- Sound (2026-10-29): bnusCore is a SPURS task (image spu_0000, entry 0x3070) with a PPU->SPU
+  command queue (q 0x420CB080) and an SPU->PPU reply queue (0x420CAC80), 16-byte elements.
+  Fixes: (1) its command handlers are reached through tables in the image's data segment, so
+  lift_spu.sh passes code addresses found there as --extra-funcs (0x15088 was the first miss);
+  (2) SPURS_JC_DONE_EVENTS=0 -- the runtime broadcast job-chain completions to every queue
+  attached to SPURS, and the decoder server thread read them as its own events (null call in
+  func_00470FE8); (3) SPURS_QUEUE_LAYOUT=2 -- BR's SPU library reads size at +0x08 and the
+  buffer at +0x10; (4) SPURS_QUEUE_PUSH=1 and a new cellSpursQueuePopBody. The PPU sends "STAT"
+  and gets "END "; music and effects come out from character select on (AUDIO_PEAK, AUDIO_WAV).
+  All three env vars are launcher defaults.
+- Open: fights ~56-58 fps (T6 is ~61), unresolved sysPrxForUser 0xE76964F5 / 0x45FE2FCE and
+  cellSpurs 0xA121A224 (harmless so far), 4:3 aspect constants, config.exe / package.

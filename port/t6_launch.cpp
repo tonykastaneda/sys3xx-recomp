@@ -121,6 +121,12 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
     setDefault("PS3_BOOT_PATH", "/dev_hdd0/game/SCEEXE000/USRDIR/GAME_208.SELF");
     setDefault("PS3_ARGV", "ver=206;romver=B23;livemon=0;usbid=026450000000;usbnum=1;idpath=/dev_usb000/T6.ID;datainfo=DINF_004.BIN");
     setDefault("PS3_VERBOSE", "0");
+    // BR's sound core (bnusCore) runs as a SPURS task fed through CellSpursQueue: the
+    // queue header layout its SPU library uses, the PPU push, and no job-chain
+    // completion events on the queues it attached (they reached its decoder thread).
+    setDefault("SPURS_QUEUE_LAYOUT", "2");
+    setDefault("SPURS_QUEUE_PUSH", "1");
+    setDefault("SPURS_JC_DONE_EVENTS", "0");
     return s_elf.c_str();
 }
 

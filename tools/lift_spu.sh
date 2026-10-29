@@ -29,8 +29,36 @@ for va, off, size, name in jobs:
     print(f'  job {va:08X} {size:6X} {name}')
 print('wrapped', len(jobs), 'jobs')
 EOF
+# Function-pointer targets the lifter cannot reach by branches (bnusCore's command tables):
+# code addresses stored in an image's data segment that follow a return or branch.
+EXTRA=$($PY - <<'EOF'
+import glob, os, struct
+out = []
+for p in sorted(glob.glob('spu/images/spu_*.elf')):
+    d = open(p, 'rb').read()
+    ph, n = struct.unpack('>I', d[0x1c:0x20])[0], struct.unpack('>H', d[0x2c:0x2e])[0]
+    segs = [struct.unpack('>8I', d[ph + i * 32:ph + i * 32 + 32]) for i in range(n)]
+    loads = [s for s in segs if s[0] == 1]
+    code = next(s for s in loads if s[6] & 1); rest = [s for s in loads if not s[6] & 1]
+    c0, c1 = code[2], code[2] + code[4]
+    ins = lambda a: struct.unpack('>I', d[code[1] + a - c0:code[1] + a - c0 + 4])[0]
+    hits = set()
+    for s in rest:
+        for i in range(0, s[4] - 3, 4):
+            v = struct.unpack('>I', d[s[1] + i:s[1] + i + 4])[0]
+            if not (c0 + 8 <= v < c1 and v % 4 == 0): continue
+            q = v - 4
+            while q > c0 and ins(q) in (0x00200000, 0x40200000): q -= 4   # lnop / nop padding
+            if ins(q) == 0x35000000 or ins(q) >> 23 in (0x64, 0x66):    # bi $lr / br
+                hits.add(v)
+    if hits:
+        out.append(os.path.basename(p)[:-4] + '=' + ','.join(hex(h) for h in sorted(hits)))
+print(' '.join('--extra-funcs ' + o for o in out))
+EOF
+)
+echo "extra SPU entries: $EXTRA"
 $PY ps3recomp/tools/build_spu_workloads.py --images spu/images --lifted spu --out spu/spu_workloads.c \
-    --register-fn t6_spu_register_all --constructor --title t6 > out/spu_lift.log 2>&1
+    --register-fn t6_spu_register_all --constructor --title t6 --relift $EXTRA > out/spu_lift.log 2>&1
 $PY - <<'EOF'
 import re
 s = open('spu/spu_workloads.c', encoding='utf-8').read()
