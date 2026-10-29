@@ -193,7 +193,7 @@ add_executable(t6dbg "${PS3RECOMP_DIR}/runtime/ppu/tests/boot_main.cpp" $<TARGET
 if(SPU_SOURCES)
     set_source_files_properties(${SPU_SOURCES} PROPERTIES
         INCLUDE_DIRECTORIES "${PS3RECOMP_DIR}/runtime/spu"
-        COMPILE_DEFINITIONS SPU_USE_DISPATCH_MT)
+        COMPILE_DEFINITIONS "SPU_USE_DISPATCH_MT;SPU_FAST_FLOAT")
     set_source_files_properties(${SPU_SOURCES} PROPERTIES COMPILE_OPTIONS "-O2")
 endif()
 set_source_files_properties(${RECOMP_SOURCES} PROPERTIES COMPILE_OPTIONS "-w;-ffp-contract=off")

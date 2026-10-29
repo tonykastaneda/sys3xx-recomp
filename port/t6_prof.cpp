@@ -15,6 +15,7 @@
 
 static std::map<std::string, unsigned> s_mod;
 static volatile DWORD s_watch_tid;
+static volatile DWORD s_watch_list[32]; static volatile long s_watch_n;
 
 static void sampleThread(HANDLE t, DWORD tid, uintptr_t base, std::unordered_map<uint64_t, unsigned>& hist,
                          std::unordered_map<DWORD, unsigned>& perThread, unsigned& total)
@@ -44,11 +45,18 @@ static DWORD WINAPI profThread(LPVOID)
     ULONGLONG last = GetTickCount64();
     const DWORD self = GetCurrentThreadId();
     const bool drainOnly = !strcmp(getenv("T6_PROF"), "drain");
+    const bool jobsOnly = !strcmp(getenv("T6_PROF"), "jobs");
+    HANDLE jh[32] = {};
     HANDLE watched = nullptr;
     for (;;) {
         Sleep(1);
         rounds++;
-        if (drainOnly) {
+        if (jobsOnly) {
+            for (long i = 0; i < s_watch_n && i < 32; i++) {
+                if (!jh[i]) jh[i] = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT, FALSE, s_watch_list[i]);
+                if (jh[i]) sampleThread(jh[i], s_watch_list[i], base, hist, perThread, total);
+            }
+        } else if (drainOnly) {
             if (!watched && s_watch_tid) watched = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT, FALSE, s_watch_tid);
             if (watched) sampleThread(watched, s_watch_tid, base, hist, perThread, total);
         } else {
@@ -81,6 +89,7 @@ static DWORD WINAPI profThread(LPVOID)
 }
 
 extern "C" void t6_prof_watch_self(void) { s_watch_tid = GetCurrentThreadId(); }
+extern "C" void t6_prof_watch_add(void) { const long i = InterlockedIncrement(&s_watch_n) - 1; if (i < 32) s_watch_list[i] = GetCurrentThreadId(); }
 
 extern "C" void t6_prof_start(void)
 {
