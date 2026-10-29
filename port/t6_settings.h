@@ -72,6 +72,7 @@ struct Settings {
     VideoSettings video;
     PlayerBinds players[2];
     SystemBinds system;
+    std::string gamePath;   // [Paths] Game=, empty = the "game" folder next to t6.exe
 };
 
 inline Binding bind(uint16_t key, int pad, uint16_t btn) { Binding b; b.key = key; b.padIndex = pad; b.padButton = btn; return b; }
@@ -190,6 +191,9 @@ inline Settings loadSettings(P path_)
             if (const char* t = get(p ? "Player2" : "Player1", kPlayerActionKeys[a])) s.players[p].b[a] = parseBinding(t);
     for (int a = 0; a < kSystemActionCount; a++)
         if (const char* t = get("System", kSystemActionKeys[a])) s.system.b[a] = parseBinding(t);
+    char g[MAX_PATH] = {};
+    GetPrivateProfileStringA("Paths", "Game", "", g, sizeof g, path.c_str());
+    s.gamePath = g;
     return s;
 }
 
@@ -211,6 +215,8 @@ inline bool saveSettings(P path_, const Settings& s)
     fprintf(f, "\n[System]\n");
     for (int a = 0; a < kSystemActionCount; a++)
         fprintf(f, "%s=%s\n", kSystemActionKeys[a], bindingText(s.system.b[a]).c_str());
+    fprintf(f, "\n[Paths]\n; Folder with the extracted game (it holds dev_hdd0). Empty = the \"game\" folder next to t6.exe.\nGame=%s\n",
+            s.gamePath.c_str());
     fclose(f);
     return true;
 }

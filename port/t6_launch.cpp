@@ -80,8 +80,11 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
     t6::resolutionSize(st.video.resolution, st.video.aspect, w, h);
     char buf[64];
     snprintf(buf, sizeof buf, "%dx%d", w, h); setDefault("RSX_WINDOW", buf);
-    // Internal resolution: the game draws 1280x720; scale it to the chosen line count.
-    const float scale = st.video.resolution == t6::Resolution::Original ? 1.0f : h / 720.0f;
+    // Internal resolution: the game draws 1280x720 and the present scales it to the window.
+    // [Video] InternalScale=1 renders at the chosen line count instead. Off by default:
+    // scaled render targets come out black in fights (the title and menus are fine).
+    const bool internal = GetPrivateProfileIntA("Video", "InternalScale", 0, ini.c_str()) != 0;
+    const float scale = internal && st.video.resolution != t6::Resolution::Original ? h / 720.0f : 1.0f;
     snprintf(buf, sizeof buf, "%.4f", scale); setDefault("RSX_SCALE", buf);
     setDefault("RSX_DISPLAY", st.video.fullscreen ? "borderless" : "windowed");
     setDefault("RSX_VSYNC", st.video.vsync ? "1" : "0");

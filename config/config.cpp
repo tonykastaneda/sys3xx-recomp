@@ -248,7 +248,7 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l)
             return 0;
         }
         if ((id == ID_RES || id == ID_ASPECT) && HIWORD(w) == CBN_SELCHANGE) { readUi(); updateResInfo(); }
-        if (id == ID_DEFAULTS) { g_cfg = defaultSettings(); loadUi(); setStatus(L"Defaults loaded (not saved yet)."); }
+        if (id == ID_DEFAULTS) { std::string gp = g_cfg.gamePath; g_cfg = defaultSettings(); g_cfg.gamePath = gp; loadUi(); setStatus(L"Defaults loaded (not saved yet)."); }
         if (id == ID_SAVE) save();
         if (id == ID_PLAY && save()) {
             wchar_t exe[MAX_PATH]; GetModuleFileNameW(nullptr, exe, MAX_PATH);

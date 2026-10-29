@@ -20,3 +20,6 @@ reference/
 .claude/hooks/
 recompiled_113/
 spu/
+
+# Packaged build (tools/package.sh)
+dist/
