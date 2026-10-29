@@ -26,6 +26,8 @@
 #include <vector>
 
 extern "C" {
+void t6_movie_tick(void);
+void t6_movie_init(void);
 extern uint8_t* vm_base;
 extern PPU_THREAD_LOCAL void (*g_trampoline_fn)(void*);
 extern PPU_THREAD_LOCAL ppu_context* g_active_ctx;
@@ -396,6 +398,7 @@ DWORD WINAPI usbdThread(LPVOID)
             }
             if (c.cb) guestCall(c.cb, c.a0, c.a1, c.a2, c.a3);
         }
+        t6_movie_tick();
         if (GetTickCount() - lastSave > 3000) { saveSram(); lastSave = GetTickCount(); }
         Sleep(1);
     }
@@ -761,6 +764,8 @@ extern "C" void t6_io_init(const char* iniPath, const char* sramPath)
     loadSram();
     buildDevices();
 
+    t6_movie_init();   // before the empty PAMF/Dmux fallbacks below (first registration wins)
+    startThread();     // the worker also runs the demuxer and movie callbacks
     ps3_hle_register_ctx(0xD0E766FEu, "cellUsbdInit", hInit);
     ps3_hle_register_ctx(0x35F22AC3u, "cellUsbdEnd", hEnd);
     ps3_hle_register_ctx(0x5C832BD7u, "cellUsbdSetThreadPriority2", hOk);
@@ -815,4 +820,9 @@ extern "C" void t6_io_init_syscalls(void)
     Lv2Fn* table = reinterpret_cast<Lv2Fn*>(g_lv2_syscalls);
     g_prevFcntl = table[817];        // sys_fs_fcntl
     table[817] = sysFsFcntl;
+}
+
+extern "C" void t6_queue_call(uint32_t cb, uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3)
+{
+    queueCall(cb, a0, a1, a2, a3);
 }
