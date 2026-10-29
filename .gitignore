@@ -19,3 +19,4 @@ reference/
 .claude/settings.local.json
 .claude/hooks/
 recompiled_113/
+spu/

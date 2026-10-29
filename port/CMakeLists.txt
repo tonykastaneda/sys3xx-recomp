@@ -179,6 +179,7 @@ endif()
 add_library(t6_game OBJECT
     stubs.cpp
     t6_usio.cpp
+    t6_patches.cpp
     ${PS3RECOMP_SCAFFOLD}
     ${HLE_NID_TABLE}
     ${RECOMP_SOURCES}
@@ -213,6 +214,7 @@ endforeach()
 foreach(tgt t6 t6dbg)
     set_target_properties(${tgt} PROPERTIES LINKER_LANGUAGE CXX)
     target_link_libraries(${tgt} PRIVATE dbghelp user32 gdi32 winmm xinput)
+    target_link_options(${tgt} PRIVATE "/MAP:${CMAKE_BINARY_DIR}/${tgt}.map")
 endforeach()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
     target_sources(t6 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")

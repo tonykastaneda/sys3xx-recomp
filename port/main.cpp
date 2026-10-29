@@ -68,6 +68,7 @@ int      ppu_run(uint32_t entry_opd, uint32_t stack_top);
  * into guest RAM and register their exports. stubs.cpp has the empty version
  * a game with no lifted PRX wants. */
 void     ps3_load_prx_modules(void);
+void     t6_io_init_syscalls(void);
 
 extern const char* ppu_vfs_root;              /* host dir the PS3 mount points map into */
 
@@ -172,6 +173,18 @@ static void present_guest_frame(void)
     /* This thread increments and guest threads read, so interlocked rather
      * than a volatile ++, which on arm64 is neither atomic nor a fence. */
     InterlockedIncrement(&g_frames_presented);
+    /* T6_FPS_LOG: presented guest frames per second, every 5 s. */
+    static int fps_log = -1;
+    if (fps_log < 0) fps_log = getenv("T6_FPS_LOG") ? 1 : 0;
+    if (fps_log) {
+        static ULONGLONG t0 = GetTickCount64(); static LONG f0 = 0;
+        ULONGLONG now = GetTickCount64();
+        if (now - t0 >= 5000) {
+            fprintf(stderr, "[t6] presented %ld frames in %.1f s (flip requests %u)\n",
+                    g_frames_presented - f0, (now - t0) / 1000.0, cellGcm_flip_request_count());
+            t0 = now; f0 = g_frames_presented;
+        }
+    }
 }
 
 static DWORD WINAPI frame_clock(LPVOID)
@@ -354,6 +367,7 @@ int main(int argc, char** argv)
     ppu_sysprx_register();   /* boot-critical CRT */
     ppu_fs_register();       /* cellFs over the game directory */
     lv2_init_syscalls();     /* the lv2 syscall table */
+    t6_io_init_syscalls();   /* T6: sys_fs_fcntl USB key queries */
 
     /* Install the guest-callback hook, then start the frame clock. It no-ops
      * until the title registers its vblank and flip handlers during init. */
