@@ -165,6 +165,24 @@ void hGetStreamInfo(ppu_context* ctx)                // (reader*, void* info, u3
         G(out)[24] = a[21]; G(out)[25] = a[22]; G(out)[26] = a[23];
         G(out)[27] = (a[24] >> 7) & 1; G(out)[28] = (a[24] >> 6) & 1; G(out)[29] = (a[24] >> 4) & 3; G(out)[30] = a[24] & 0xF;
         G(out)[31] = a[25];
+    } else if (t == PT_M2V && size >= 0x18) {        // CellPamfM2vInfo (RPCS3 cellPamf.cpp)
+        // T6's movies are MPEG-2 and its player sizes the movie quad from these:
+        // left zero, every corner sampled texel (0.5, 0.5) and the movies were black.
+        const uint8_t* a = G(s);
+        G(out)[0] = a[0] == 0x44 ? 3 : a[0] == 0x48 ? 1 : 0xFF;   // profileAndLevelIndication
+        G(out)[1] = (a[2] >> 7) & 1;                 // progressiveSequence
+        G(out)[2] = (a[2] >> 6) & 1;                 // videoSignalInfoFlag
+        G(out)[3] = a[2] & 0x0F;                     // frameRateInfo
+        G(out)[4] = a[3];                            // aspectRatioIdc
+        if (a[3] == 0xFF) { wr16(out + 6, rd16(s + 4)); wr16(out + 8, rd16(s + 6)); }
+        wr16(out + 10, (uint16_t)(a[9] * 16));       // horizontalSize
+        wr16(out + 12, (uint16_t)(a[11] * 16));      // verticalSize
+        wr16(out + 14, rd16(s + 12));                // horizontalSizeValue
+        wr16(out + 16, rd16(s + 14));                // verticalSizeValue
+        if (G(out)[2]) {
+            G(out)[18] = a[20] >> 5; G(out)[19] = (a[20] >> 4) & 1;
+            G(out)[20] = a[21]; G(out)[21] = a[22]; G(out)[22] = a[23];
+        }
     }
     RET(0);
 }
@@ -231,6 +249,8 @@ struct Es {
     std::vector<uint8_t> partial;    // AU being assembled
     uint64_t partialPts = ~0ull, partialDts = ~0ull;
     bool havePartial = false;
+    int mode = 0;                    // 0 unknown, 1 AVC, 2 MPEG-2 video (from the bitstream)
+    bool partialHasPic = false;      // MPEG-2: the AU being assembled already holds a picture
     std::deque<Au> ready;            // demuxed, not yet taken by GetAu
     std::deque<Au> taken;            // handed out, not yet released
     uint32_t head = 0;               // ring write offset
@@ -275,9 +295,10 @@ bool emitAu(Es& e)
     const uint32_t base = kRingBase + (uint32_t)e.slot * kRingSize;
     memcpy(G(base + e.head), e.partial.data(), e.partial.size());
     Au au{base + e.head, (uint32_t)e.partial.size(), e.partialPts, e.partialDts, 0, false};
-    // An IDR slice (NAL 5) makes it a random access point.
+    // AVC: an IDR slice (NAL 5) makes it a random access point; MPEG-2: a sequence header.
     for (size_t i = 0; i + 3 < e.partial.size(); i++)
-        if (e.partial[i] == 0 && e.partial[i + 1] == 0 && e.partial[i + 2] == 1 && (e.partial[i + 3] & 0x1F) == 5) { au.rap = true; break; }
+        if (e.partial[i] == 0 && e.partial[i + 1] == 0 && e.partial[i + 2] == 1 &&
+            (e.mode == 2 ? e.partial[i + 3] == 0xB3 : (e.partial[i + 3] & 0x1F) == 5)) { au.rap = true; break; }
     e.head += need;
     e.ready.push_back(au);
     e.partial.clear(); e.havePartial = false;
@@ -285,17 +306,36 @@ bool emitAu(Es& e)
     return true;
 }
 
-// Append ES payload bytes; split AVC at access-unit delimiters (00 00 01 09).
+// Append ES payload bytes and split them into access units. AVC: at access-unit delimiters
+// (00 00 01 09). MPEG-2 video (T6's movies -- told apart by a sequence header, 00 00 01 B3):
+// at a picture start code (00 00 01 00), or at the sequence/GOP header (B3/B8) in front of it.
+// The AVC rule on MPEG-2 cut pictures apart at slice codes 0x09/0x29/... ("overread",
+// "MVs not available" from the decoder).
 bool feedVideo(Es& e, const uint8_t* p, size_t n, uint64_t pts, uint64_t dts)
 {
     size_t start = 0;
     for (size_t i = 0; i + 3 < n; i++) {
-        if (p[i] == 0 && p[i + 1] == 0 && p[i + 2] == 1 && (p[i + 3] & 0x1F) == 9) {
+        if (!(p[i] == 0 && p[i + 1] == 0 && p[i + 2] == 1)) continue;
+        const uint8_t c = p[i + 3];
+        if (!e.mode) {
+            if (c == 0xB3 || c == 0xB8 || c == 0x00) e.mode = 2;
+            else if (!(c & 0x80)) e.mode = 1;
+        }
+        bool cut;
+        if (e.mode == 2) {
+            const bool hdr = c == 0xB3 || c == 0xB8, pic = c == 0x00;
+            cut = (hdr || pic) && (!e.havePartial || e.partialHasPic);
+            if (pic && !cut) e.partialHasPic = true;   /* the headers' picture */
+        } else {
+            cut = (c & 0x1F) == 9;
+        }
+        if (cut) {
             if (e.havePartial) {
                 e.partial.insert(e.partial.end(), p + start, p + i);
                 if (!emitAu(e)) return false;
             }
             e.havePartial = true;
+            e.partialHasPic = (e.mode == 2 && c == 0x00);
             e.partialPts = pts; e.partialDts = dts;
             pts = dts = ~0ull;                       // only the first AU starting in this PES owns its PTS
             start = i;

@@ -41,5 +41,5 @@ Logs go to t6.log next to t6.exe.
 Known issues
 ------------
   - (none for video: 1080p/1440p render at 1.5x/2x internally; InternalScale=0 in t6.ini turns that off)
-  - Attract-mode movies show black.
+
   - Sound is not verified.
