@@ -38,6 +38,6 @@ Logs go to t6.log next to t6.exe.
 
 Known issues
 ------------
-  - Fights run below full speed (about 13 fps) - being worked on.
+  - Internal upscaling (InternalScale=1 in t6.ini) shows black fights; off by default.
   - Attract-mode movies show black.
   - Sound is not verified.
