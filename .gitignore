@@ -1,0 +1,27 @@
+# Python environment
+.venv/
+
+# Build output
+build*/
+
+# Game files and anything generated from them. Never commit these.
+game/
+dump/
+elf/
+out/
+recompiled*/
+spu/
+
+# Reference checkouts (cloned separately, not part of this repo)
+reference/
+
+# Local Claude settings and autonomy hooks
+.claude/settings.local.json
+.claude/hooks/
+recompiled_113/
+spu/
+
+# Packaged build (tools/package.sh)
+dist/
+recompiled_208/
+elf/
