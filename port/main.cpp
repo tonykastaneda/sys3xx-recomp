@@ -197,11 +197,13 @@ extern "C" void* cellGcm_fifo_kick_event(void);
 extern "C" int (*g_lv2_usleep_hook)(uint32_t lr, uint64_t usec);
 
 /* Any guest usleep is usually a poll on something another thread produces --
- * here, mostly the FIFO drain's fence labels. Wake the drain; sleep as asked. */
+ * here, mostly the FIFO drain's fence labels: T6's GPU finish (0x4B46E8)
+ * stores put itself and polls its label with usleep(100). Wake the drain when
+ * there is something new to walk; sleep as asked. */
+extern "C" void cellGcm_kick_if_behind(void);
 static int t6_usleep_kick(uint32_t, uint64_t)
 {
-    static HANDLE ev = (HANDLE)cellGcm_fifo_kick_event();
-    SetEvent(ev);
+    cellGcm_kick_if_behind();
     return 0;
 }
 

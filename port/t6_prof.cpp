@@ -83,7 +83,8 @@ static DWORD WINAPI profThread(LPVOID)
             fprintf(stderr, "[prof] %u rounds, %u samples in our code; threads:", rounds, total);
             for (auto& kv : perThread) fprintf(stderr, " %lu=%u%%", kv.first, total ? kv.second * 100 / total : 0);
             fputc('\n', stderr);
-            for (size_t i = 0; i < v.size() && i < 40; i++) fprintf(stderr, "[prof] rva=0x%llX %u\n", (unsigned long long)v[i].first, v[i].second);
+            { static int top = -1; if (top < 0) { const char* e = getenv("T6_PROF_TOP"); top = e ? atoi(e) : 40; }   /* RVAs listed */
+              for (size_t i = 0; i < v.size() && i < (size_t)top; i++) fprintf(stderr, "[prof] rva=0x%llX %u\n", (unsigned long long)v[i].first, v[i].second); }
             std::vector<std::pair<std::string, unsigned>> mv(s_mod.begin(), s_mod.end());
             std::sort(mv.begin(), mv.end(), [](auto& a, auto& b) { return a.second > b.second; });
             for (size_t i = 0; i < mv.size() && i < 25; i++) fprintf(stderr, "[prof] outside %s %u\n", mv[i].first.c_str(), mv[i].second);
