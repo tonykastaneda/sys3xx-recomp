@@ -188,6 +188,9 @@ static void present_guest_frame(void)
     }
 }
 
+extern "C" const char* t6_launch_prepare(int argc, char** argv);
+extern "C" void t6_launch_apply_video(void);
+
 static DWORD WINAPI frame_clock(LPVOID)
 {
     const char* title = getenv("PS3_TITLE");
@@ -196,6 +199,7 @@ static DWORD WINAPI frame_clock(LPVOID)
     int rsx_ok = (rsx_backend_init(WINDOW_WIDTH, WINDOW_HEIGHT, title) == 0);
     fprintf(stderr, "[rsx] %s backend init %s\n", RSX_BACKEND_NAME,
             rsx_ok ? "OK -- window open" : "FAILED");
+    t6_launch_apply_video();
 
     unsigned  last_flip = 0;
     ULONGLONG next_tick = GetTickCount64();
@@ -335,10 +339,9 @@ static void harness_guest_caller(uint32_t opd, uint64_t a0, uint64_t a1,
 
 int main(int argc, char** argv)
 {
-    if (argc < 2) {
-        printf("usage: %s <PPU ELF>\n", argv[0]);
-        return 2;
-    }
+    /* No arguments: a double-click. t6_launch.cpp finds the game, extracts the
+     * ELF and turns t6.ini into the boot and renderer settings. */
+    const char* elf_path = t6_launch_prepare(argc, argv);
 
 #ifdef _WIN32
 #pragma comment(lib, "winmm.lib")
@@ -356,13 +359,13 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    uint32_t entry = ppu_load_elf(argv[1]);
+    uint32_t entry = ppu_load_elf(elf_path);
     if (!entry) {
-        fprintf(stderr, "ERROR: could not load %s\n", argv[1]);
+        fprintf(stderr, "ERROR: could not load %s\n", elf_path);
         return 1;
     }
 
-    derive_vfs_root(argv[1]);
+    derive_vfs_root(elf_path);
     printf("[boot] VFS root: %s\n", ppu_vfs_root);
 
     ppu_recomp_register();   /* lifted function table -> address map */

@@ -187,7 +187,7 @@ add_library(t6_game OBJECT
     ${RECOMP_SOURCES}
     ${SPU_SOURCES}
 )
-add_executable(t6 main.cpp $<TARGET_OBJECTS:t6_game>)
+add_executable(t6 main.cpp t6_launch.cpp $<TARGET_OBJECTS:t6_game>)
 add_executable(t6dbg "${PS3RECOMP_DIR}/runtime/ppu/tests/boot_main.cpp" $<TARGET_OBJECTS:t6_game>)
 
 if(SPU_SOURCES)
@@ -218,6 +218,8 @@ foreach(tgt t6 t6dbg)
     target_link_libraries(${tgt} PRIVATE dbghelp user32 gdi32 winmm xinput)
     target_link_options(${tgt} PRIVATE "/MAP:${CMAKE_BINARY_DIR}/${tgt}.map")
 endforeach()
+# t6.exe is double-clicked: no console window (t6_launch.cpp logs to t6.log instead).
+target_link_options(t6 PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
     target_sources(t6 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
 endif()
