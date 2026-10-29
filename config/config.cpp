@@ -27,7 +27,7 @@ static std::wstring g_ini;
 
 // ---- page controls --------------------------------------------------------
 static std::vector<HWND> g_pages[4];          // Video, Player 1, Player 2, System
-static HWND g_res, g_aspect, g_full, g_vsync, g_resinfo;
+static HWND g_res, g_aspect, g_full, g_vsync, g_skin, g_resinfo;
 static HWND g_ctrl[2];                        // per-player controller dropdown
 
 struct BindRow { int player; int action; HWND key; HWND pad; };
@@ -140,6 +140,7 @@ static void loadUi()
     SendMessageW(g_aspect, CB_SETCURSEL, (int)g_cfg.video.aspect, 0);
     SendMessageW(g_full, BM_SETCHECK, g_cfg.video.fullscreen ? BST_CHECKED : BST_UNCHECKED, 0);
     SendMessageW(g_vsync, BM_SETCHECK, g_cfg.video.vsync ? BST_CHECKED : BST_UNCHECKED, 0);
+    SendMessageW(g_skin, BM_SETCHECK, g_cfg.video.skinSync ? BST_CHECKED : BST_UNCHECKED, 0);
     for (int p = 0; p < 2; p++) if (g_ctrl[p]) fillControllers(p);
     for (auto& r : g_rows) refreshRow(r);
     updateResInfo();
@@ -170,8 +171,10 @@ static void buildUi()
     g_resinfo = mk(L"STATIC", L"", SS_LEFT, x0 + 130, y0 + 70, 300, 20, -1, 0);
     g_full = mk(L"BUTTON", L"Fullscreen", BS_AUTOCHECKBOX, x0, y0 + 104, 200, 24, ID_FULL, 0);
     g_vsync = mk(L"BUTTON", L"VSync", BS_AUTOCHECKBOX, x0, y0 + 134, 200, 24, ID_VSYNC, 0);
+    g_skin = mk(L"BUTTON", L"Accurate character models (fixes torn/stretched characters; fights may run below 60 fps)",
+                BS_AUTOCHECKBOX | BS_MULTILINE, x0, y0 + 164, 460, 40, ID_VSYNC + 50, 0);
     mk(L"STATIC", L"4:3 renders the game in a 4:3 frame (as on a 4:3 cabinet monitor), not stretched.",
-       SS_LEFT, x0, y0 + 176, 470, 36, -1, 0);
+       SS_LEFT, x0, y0 + 220, 470, 36, -1, 0);
 
     buildBindPage(1, 0, kPlayerActionNames, kPlayerActionCount, x0, y0);
     buildBindPage(2, 1, kPlayerActionNames, kPlayerActionCount, x0, y0);
@@ -195,6 +198,7 @@ static void readUi()
     g_cfg.video.aspect = (Aspect)SendMessageW(g_aspect, CB_GETCURSEL, 0, 0);
     g_cfg.video.fullscreen = SendMessageW(g_full, BM_GETCHECK, 0, 0) == BST_CHECKED;
     g_cfg.video.vsync = SendMessageW(g_vsync, BM_GETCHECK, 0, 0) == BST_CHECKED;
+    g_cfg.video.skinSync = SendMessageW(g_skin, BM_GETCHECK, 0, 0) == BST_CHECKED;
 }
 
 static bool save()

@@ -87,6 +87,7 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
     snprintf(buf, sizeof buf, "%.4f", scale); setDefault("RSX_SCALE", buf);
     setDefault("RSX_DISPLAY", st.video.fullscreen ? "borderless" : "windowed");
     setDefault("RSX_VSYNC", st.video.vsync ? "1" : "0");
+    setDefault("RSX_WAIT_JOBS", st.video.skinSync ? "1" : "0");
     // 4:3: the game only draws 16:9 (it hands its frame to cellResc and never asks the TV's
     // shape), so 4:3 is the picture a PS3 gives a 4:3 set: the 16:9 frame letterboxed.
     s_screen_aspect = st.video.aspect == t6::Aspect::Narrow ? 4.0f / 3.0f : 0.0f;

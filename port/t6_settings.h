@@ -66,6 +66,7 @@ struct VideoSettings {
     Aspect aspect = Aspect::Wide;
     bool fullscreen = false;
     bool vsync = true;
+    bool skinSync = true;   // draw characters only once the SPU has written them (no torn meshes)
 };
 
 struct Settings {
@@ -197,6 +198,7 @@ inline Settings loadSettings(P path_)
     if (const char* a = get("Video", "Aspect")) s.video.aspect = strstr(a, "4:3") ? Aspect::Narrow : Aspect::Wide;
     if (const char* f = get("Video", "Fullscreen")) s.video.fullscreen = atoi(f) != 0;
     if (const char* f = get("Video", "VSync")) s.video.vsync = atoi(f) != 0;
+    if (const char* f = get("Video", "SkinSync")) s.video.skinSync = atoi(f) != 0;
     for (int p = 0; p < 2; p++)
         for (int a = 0; a < kPlayerActionCount; a++)
             if (const char* t = get(p ? "Player2" : "Player1", kPlayerActionKeys[a])) s.players[p].b[a] = parseBinding(t);
@@ -220,6 +222,7 @@ inline bool saveSettings(P path_, const Settings& s)
     FILE* f = fopen(path.c_str(), "w");
     if (!f) return false;
     fprintf(f, "; Tekken 6 (arcade) settings. Edit with config.exe.\n\n[Video]\n");
+    fprintf(f, "SkinSync=%d\n", s.video.skinSync ? 1 : 0);
     fprintf(f, "Resolution=%s\nAspect=%s\nFullscreen=%d\nVSync=%d\n",
             resolutionName(s.video.resolution), s.video.aspect == Aspect::Narrow ? "4:3" : "16:9",
             s.video.fullscreen ? 1 : 0, s.video.vsync ? 1 : 0);
