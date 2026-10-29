@@ -190,9 +190,23 @@ static void present_guest_frame(void)
 
 extern "C" const char* t6_launch_prepare(int argc, char** argv);
 extern "C" void t6_launch_apply_video(void);
+extern "C" void  cellGcm_fifo_kick_wait(unsigned ms);
+extern "C" void* cellGcm_fifo_kick_event(void);
+extern "C" int (*g_lv2_usleep_hook)(uint32_t lr, uint64_t usec);
 
+/* Any guest usleep is usually a poll on something another thread produces --
+ * here, mostly the FIFO drain's fence labels. Wake the drain; sleep as asked. */
+static int t6_usleep_kick(uint32_t, uint64_t)
+{
+    static HANDLE ev = (HANDLE)cellGcm_fifo_kick_event();
+    SetEvent(ev);
+    return 0;
+}
+
+extern "C" void t6_prof_watch_self(void);
 static DWORD WINAPI frame_clock(LPVOID)
 {
+    t6_prof_watch_self();
     const char* title = getenv("PS3_TITLE");
     if (!title || !*title) title = "ps3recomp";
 
@@ -204,8 +218,26 @@ static DWORD WINAPI frame_clock(LPVOID)
     unsigned  last_flip = 0;
     ULONGLONG next_tick = GetTickCount64();
 
+    /* T6_FPS_LOG: where this thread's time goes (ms per 5 s). */
+    static LARGE_INTEGER qf; QueryPerformanceFrequency(&qf);
+    double tm[5] = {0}; ULONGLONG tm_last = GetTickCount64(); unsigned tm_n = 0;
+    auto qnow = []() { LARGE_INTEGER c; QueryPerformanceCounter(&c); return c.QuadPart; };
     for (;;) {
-        Sleep(1);   /* T6: render passes fence on the drain below; 4 ms per wait capped fights at ~13 fps */
+        { const ULONGLONG t = GetTickCount64();
+          if (t - tm_last >= 5000) {
+              static int fl = -1; if (fl < 0) fl = getenv("T6_FPS_LOG") ? 1 : 0;
+              if (fl) fprintf(stderr, "[t6] drain thread ms/5s: wait %.0f  fifo %.0f  present %.0f  pump %.0f  ticks %.0f  loops %u\n",
+                              tm[0], tm[1], tm[2], tm[3], tm[4], tm_n);
+              for (double& x : tm) x = 0;
+              tm_last = t; tm_n = 0;
+          } }
+        tm_n++;
+        long long q0 = qnow();
+        /* Idle wait, woken early by a FIFO kick (and by any guest usleep with
+         * T6_USLEEP_KICK=1). The 14 fps fights were not this wait: they were
+         * the D3D12 engine creating ~90 depth-snapshot textures a frame. */
+        cellGcm_fifo_kick_wait(1);
+        long long q1 = qnow(); tm[0] += (q1 - q0) * 1000.0 / qf.QuadPart;
         ULONGLONG now = GetTickCount64();
 
         int fired = 0;
@@ -236,6 +268,7 @@ static DWORD WINAPI frame_clock(LPVOID)
             fired++;
         }
         if (fired >= 240) next_tick = now;   /* fell too far behind -- resync */
+        long long q2 = qnow(); tm[4] += (q2 - q1) * 1000.0 / qf.QuadPart;
 
         /* Drain at the outer cadence too, not only on the 16 ms tick: titles
          * fence every render pass on a label the drain writes, and one wave of
@@ -246,7 +279,10 @@ static DWORD WINAPI frame_clock(LPVOID)
                 present_guest_frame();
                 last_flip = cellGcm_flip_request_count();
             }
+            long long q3 = qnow(); tm[2] += (q3 - q2) * 1000.0 / qf.QuadPart;
             cellGcm_rsx_process_fifo();
+            long long q4 = qnow(); tm[1] += (q4 - q3) * 1000.0 / qf.QuadPart;
+            struct PumpT { long long a; double* t; LARGE_INTEGER* f; ~PumpT() { LARGE_INTEGER c; QueryPerformanceCounter(&c); *t += (c.QuadPart - a) * 1000.0 / f->QuadPart; } } pumpT{q4, &tm[3], &qf};
 
             if (rsx_backend_pump() != 0) {
                 rsx_ok = 0;              /* window closed */
@@ -379,6 +415,7 @@ int main(int argc, char** argv)
     /* Install the guest-callback hook, then start the frame clock. It no-ops
      * until the title registers its vblank and flip handlers during init. */
     g_ps3_guest_caller = harness_guest_caller;
+    if (getenv("T6_USLEEP_KICK")) g_lv2_usleep_hook = t6_usleep_kick;   /* opt-in: no gain measured */
     CreateThread(NULL, 4u * 1024 * 1024, frame_clock, NULL, 0, NULL);
 
     printf("\n[boot] dispatching entry OPD 0x%08X (stack top 0x%08X)\n\n",
