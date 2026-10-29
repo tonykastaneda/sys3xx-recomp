@@ -3,7 +3,7 @@
 #   tools/run.sh [seconds] [log]
 root="$(cd "$(dirname "$0")/.." && pwd)"
 secs="${1:-60}"; log="${2:-$root/out/run/latest.log}"
-export PS3_TITLE="TEKKEN 6"
+export PS3_TITLE="TEKKEN 6 BLOODLINE REBELLION"
 export PS3_VFS_ROOT="$(cygpath -m "$root/game")"
 export PS3_HDD0_ROOT="$(cygpath -m "$root/game/dev_hdd0")"
 export PS3_DEV_FLASH="${PS3_DEV_FLASH:-E:/SYSTEMS/TEKKNOPAROT/RPCS3/dev_flash}"

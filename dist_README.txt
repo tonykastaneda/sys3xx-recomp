@@ -1,5 +1,5 @@
-TEKKEN 6 (arcade, System 357) - native Windows port
-====================================================
+TEKKEN 6: BLOODLINE REBELLION (arcade, System 357) - native Windows port
+=========================================================================
 
   config.exe   settings: resolution, 4:3 / 16:9, fullscreen, VSync, Player 1 / Player 2 / system buttons
   t6.exe       the game. Double-click it (or use "Save & Play" in config.exe).
@@ -12,7 +12,7 @@ Either put it in a folder named "game" next to t6.exe, or set its path in t6.ini
   [Paths]
   Game=C:\path\to\the\dump
 
-On first start t6.exe extracts GAME_113.elf into the "cache" folder (about 9 MB) and
+On first start t6.exe extracts GAME_208.elf into the "cache" folder (about 8 MB) and
 creates the USB key file T6.ID in the game folder.
 
 Default controls (change them in config.exe; XInput pads work too)
@@ -40,13 +40,12 @@ Video
 
 Sound and movies
 ----------------
-  Music, voices and effects play in character select and fights. Attract mode plays
-  only the logo jingle (arcade attract-sound behaviour). The attract movies play,
+  Music, voices and effects play from character select on. The attract movies play,
   without their own audio.
 
 Logs go to t6.log next to t6.exe.
 
 Known issues
 ------------
-  - Rarely the game exits silently right after an attract movie ends.
   - Movie audio is not played.
+  - Fights run at about 57 fps (the T6 port reaches 60).

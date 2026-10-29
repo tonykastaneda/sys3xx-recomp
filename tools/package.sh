@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Assemble dist/T6: t6.exe + config.exe + the FFmpeg DLLs the movie decoder loads + README.
+# Assemble dist/T6BR: t6.exe + config.exe + the FFmpeg DLLs the movie decoder loads + README.
 # The game dump is NOT copied (disk space): t6.ini's [Paths] Game= points at it.
 #   tools/package.sh [game dir]      (default: the repo's game/)
 set -e
-root="$(cd "$(dirname "$0")/.." && pwd)"; out="$root/dist/T6"
+root="$(cd "$(dirname "$0")/.." && pwd)"; out="$root/dist/T6BR"
 game="$(cygpath -w "${1:-$root/game}")"
 mkdir -p "$out"
 cp -u "$root/build/t6.exe" "$root/build/config.exe" "$out/"

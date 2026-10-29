@@ -1,4 +1,4 @@
-// config.exe: settings for the T6 arcade port. Writes t6.ini next to itself; t6.exe reads it.
+// config.exe: settings for the T6 Bloodline Rebellion arcade port. Writes t6.ini next to itself; t6.exe reads it.
 // Plain Win32 + XInput, no other dependencies.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -364,7 +364,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR cmd, int show)
     RegisterClassExW(&wc);
     RECT r{0, 0, S(kClientW), S(kClientH)};
     AdjustWindowRect(&r, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
-    HWND h = CreateWindowExW(0, wc.lpszClassName, L"Tekken 6 (arcade) - Settings",
+    HWND h = CreateWindowExW(0, wc.lpszClassName, L"Tekken 6 Bloodline Rebellion (arcade) - Settings",
                              WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
                              CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
                              nullptr, nullptr, inst, nullptr);

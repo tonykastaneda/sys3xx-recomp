@@ -104,7 +104,7 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
     char full[MAX_PATH]; GetFullPathNameA(game.c_str(), MAX_PATH, full, nullptr); game = full;
     const std::string self = game + "\\dev_hdd0\\game\\SCEEXE000\\USRDIR\\GAME_208.SELF";
     if (!exists(self))
-        fail("Game files not found.\n\nPut the extracted Tekken 6 (arcade) dump in a folder named \"game\" next to t6.exe "
+        fail("Game files not found.\n\nPut the extracted Tekken 6 Bloodline Rebellion (arcade) dump in a folder named \"game\" next to t6.exe "
              "(it must contain dev_hdd0\\game\\SCEEXE000\\USRDIR\\GAME_208.SELF), or set [Paths] Game= in t6.ini.\n\nLooked in: " + game);
 
     s_elf = dir + "\\cache\\GAME_208.elf";
@@ -114,7 +114,7 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
     const std::string id = game + "\\T6.ID";
     if (!exists(id)) { if (FILE* f = fopen(id.c_str(), "wb")) { static const char z[16] = "026450000000"; fwrite(z, 1, 16, f); fclose(f); } }
 
-    setDefault("PS3_TITLE", "TEKKEN 6");
+    setDefault("PS3_TITLE", "TEKKEN 6 BLOODLINE REBELLION");
     setDefault("PS3_VFS_ROOT", fwd(game));
     setDefault("PS3_HDD0_ROOT", fwd(game + "\\dev_hdd0"));
     if (exists(dir + "\\dev_flash")) setDefault("PS3_DEV_FLASH", fwd(dir + "\\dev_flash"));
