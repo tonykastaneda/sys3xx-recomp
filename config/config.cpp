@@ -28,6 +28,7 @@ static std::wstring g_ini;
 // ---- page controls --------------------------------------------------------
 static std::vector<HWND> g_pages[4];          // Video, Player 1, Player 2, System
 static HWND g_res, g_aspect, g_full, g_vsync, g_resinfo;
+static HWND g_ctrl[2];                        // per-player controller dropdown
 
 struct BindRow { int player; int action; HWND key; HWND pad; };
 static std::vector<BindRow> g_rows;           // player 0/1 = P1/P2, 2 = system
@@ -47,7 +48,25 @@ static void refreshRow(const BindRow& r)
 {
     Binding& b = bindingFor(r.player, r.action);
     SetWindowTextW(r.key, widen(keyName(b.key)).c_str());
-    SetWindowTextW(r.pad, widen(padName(b.padIndex, b.padButton)).c_str());
+    std::string pn = padName(b.padIndex, b.padButton);
+    if (b.padIndex < 0 && b.padButton) pn = padName(0, b.padButton).substr(7) + "  (no controller)";
+    SetWindowTextW(r.pad, widen(pn).c_str());
+}
+
+// Fill a controller dropdown: None, then Controller 1-4 marked when connected.
+static void fillControllers(int p)
+{
+    HWND c = g_ctrl[p];
+    SendMessageW(c, CB_RESETCONTENT, 0, 0);
+    SendMessageW(c, CB_ADDSTRING, 0, (LPARAM)L"None (keyboard only)");
+    for (int i = 0; i < 4; i++) {
+        XINPUT_STATE st{};
+        const bool on = XInputGetState(i, &st) == ERROR_SUCCESS;
+        wchar_t buf[64];
+        swprintf(buf, 64, L"Controller %d%s", i + 1, on ? L"  (connected)" : L"");
+        SendMessageW(c, CB_ADDSTRING, 0, (LPARAM)buf);
+    }
+    SendMessageW(c, CB_SETCURSEL, g_cfg.controller[p] + 1, 0);
 }
 
 static void setStatus(const wchar_t* s) { SetWindowTextW(g_status, s); }
@@ -81,7 +100,7 @@ static HWND mk(const wchar_t* cls, const wchar_t* text, DWORD style, int x, int 
 }
 
 enum {
-    ID_TAB = 100, ID_RES, ID_ASPECT, ID_FULL, ID_VSYNC, ID_SAVE, ID_PLAY, ID_DEFAULTS,
+    ID_TAB = 100, ID_RES, ID_ASPECT, ID_FULL, ID_VSYNC, ID_SAVE, ID_PLAY, ID_DEFAULTS, ID_CTRL1, ID_CTRL2,
     ID_BIND0 = 1000,   // ID_BIND0 + row*2 + col
 };
 
@@ -93,6 +112,11 @@ static void showPage(int p)
 
 static void buildBindPage(int page, int player, const char* const* names, int count, int x0, int y0)
 {
+    if (player < 2) {   // which controller this player uses
+        mk(L"STATIC", L"Controller", SS_LEFT, x0, y0 + 4, 120, 20, -1, page);
+        g_ctrl[player] = mk(L"COMBOBOX", L"", CBS_DROPDOWNLIST, x0 + 130, y0, 330, 200, ID_CTRL1 + player, page);
+        y0 += 40;
+    }
     mk(L"STATIC", L"Action", SS_LEFT, x0, y0, 120, 20, -1, page);
     mk(L"STATIC", L"Keyboard", SS_LEFT, x0 + 130, y0, 150, 20, -1, page);
     mk(L"STATIC", L"Controller", SS_LEFT, x0 + 290, y0, 170, 20, -1, page);
@@ -116,6 +140,7 @@ static void loadUi()
     SendMessageW(g_aspect, CB_SETCURSEL, (int)g_cfg.video.aspect, 0);
     SendMessageW(g_full, BM_SETCHECK, g_cfg.video.fullscreen ? BST_CHECKED : BST_UNCHECKED, 0);
     SendMessageW(g_vsync, BM_SETCHECK, g_cfg.video.vsync ? BST_CHECKED : BST_UNCHECKED, 0);
+    for (int p = 0; p < 2; p++) if (g_ctrl[p]) fillControllers(p);
     for (auto& r : g_rows) refreshRow(r);
     updateResInfo();
 }
@@ -215,8 +240,15 @@ static void pollPadCapture()
         if (!pressed) continue;
         for (int bit = 0; bit < 16; bit++) {
             if (pressed & (1u << bit)) {
-                Binding& b = bindingFor(g_rows[g_capRow].player, g_rows[g_capRow].action);
+                const int pl = g_rows[g_capRow].player;
+                Binding& b = bindingFor(pl, g_rows[g_capRow].action);
                 b.padIndex = i; b.padButton = (uint16_t)(1u << bit);
+                if (pl < 2) {   // the pad pressed becomes this player's controller
+                    g_cfg.controller[pl] = i;
+                    applyController(g_cfg, pl);
+                    fillControllers(pl);
+                    for (auto& r : g_rows) if (r.player == pl) refreshRow(r);
+                }
                 endCapture();
                 return;
             }
@@ -248,6 +280,16 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l)
             return 0;
         }
         if ((id == ID_RES || id == ID_ASPECT) && HIWORD(w) == CBN_SELCHANGE) { readUi(); updateResInfo(); }
+        if ((id == ID_CTRL1 || id == ID_CTRL2) && HIWORD(w) == CBN_SELCHANGE) {
+            const int pl = id - ID_CTRL1;
+            g_cfg.controller[pl] = (int)SendMessageW(g_ctrl[pl], CB_GETCURSEL, 0, 0) - 1;
+            applyController(g_cfg, pl);
+            for (auto& r : g_rows) if (r.player == pl) refreshRow(r);
+        }
+        if ((id == ID_CTRL1 || id == ID_CTRL2) && HIWORD(w) == CBN_DROPDOWN) {   // refresh "connected"
+            const int pl = id - ID_CTRL1;
+            fillControllers(pl);
+        }
         if (id == ID_DEFAULTS) { std::string gp = g_cfg.gamePath; g_cfg = defaultSettings(); g_cfg.gamePath = gp; loadUi(); setStatus(L"Defaults loaded (not saved yet)."); }
         if (id == ID_SAVE) save();
         if (id == ID_PLAY && save()) {

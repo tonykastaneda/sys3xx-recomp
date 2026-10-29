@@ -72,8 +72,18 @@ struct Settings {
     VideoSettings video;
     PlayerBinds players[2];
     SystemBinds system;
+    int controller[2] = {0, 1};   // XInput pad per player (0..3), -1 = none (keyboard only)
     std::string gamePath;   // [Paths] Game=, empty = the "game" folder next to t6.exe
 };
+
+// Point every pad binding of a player at that player's controller (button kept).
+inline void applyController(Settings& s, int p)
+{
+    for (auto& b : s.players[p].b)
+        if (b.padButton) b.padIndex = s.controller[p];
+    Binding& coin = s.system.b[p ? Coin2 : Coin1];   // each side's coin follows its pad
+    if (coin.padButton) coin.padIndex = s.controller[p];
+}
 
 inline Binding bind(uint16_t key, int pad, uint16_t btn) { Binding b; b.key = key; b.padIndex = pad; b.padButton = btn; return b; }
 
@@ -144,7 +154,7 @@ inline std::string bindingText(const Binding& b)
     char buf[64]; buf[0] = 0;
     std::string s;
     if (b.key) { snprintf(buf, sizeof buf, "key:0x%02X", b.key); s += buf; }
-    if (b.padIndex >= 0 && b.padButton) {
+    if (b.padButton) {
         snprintf(buf, sizeof buf, "%spad:%d:0x%04X", s.empty() ? "" : " ", b.padIndex, b.padButton);
         s += buf;
     }
@@ -159,7 +169,8 @@ inline Binding parseBinding(const char* t)
         char* end = nullptr;
         b.padIndex = (int)strtol(p + 4, &end, 10);
         if (end && *end == ':') b.padButton = (uint16_t)strtoul(end + 1, nullptr, 0);
-        if (b.padIndex < 0 || b.padIndex > 3 || !b.padButton) { b.padIndex = -1; b.padButton = 0; }
+        if (b.padIndex > 3 || !b.padButton) { b.padIndex = -1; b.padButton = 0; }
+        if (b.padIndex < 0) b.padIndex = -1;   // button kept: the player has no controller
     }
     return b;
 }
@@ -191,6 +202,11 @@ inline Settings loadSettings(P path_)
             if (const char* t = get(p ? "Player2" : "Player1", kPlayerActionKeys[a])) s.players[p].b[a] = parseBinding(t);
     for (int a = 0; a < kSystemActionCount; a++)
         if (const char* t = get("System", kSystemActionKeys[a])) s.system.b[a] = parseBinding(t);
+    for (int p = 0; p < 2; p++) {
+        if (const char* c = get(p ? "Player2" : "Player1", "Controller"))
+            s.controller[p] = (c[0] >= '1' && c[0] <= '4') ? c[0] - '1' : -1;
+        applyController(s, p);
+    }
     char g[MAX_PATH] = {};
     GetPrivateProfileStringA("Paths", "Game", "", g, sizeof g, path.c_str());
     s.gamePath = g;
@@ -209,6 +225,8 @@ inline bool saveSettings(P path_, const Settings& s)
             s.video.fullscreen ? 1 : 0, s.video.vsync ? 1 : 0);
     for (int p = 0; p < 2; p++) {
         fprintf(f, "\n[Player%d]\n", p + 1);
+        if (s.controller[p] >= 0) fprintf(f, "Controller=%d\n", s.controller[p] + 1);
+        else fprintf(f, "Controller=None\n");
         for (int a = 0; a < kPlayerActionCount; a++)
             fprintf(f, "%s=%s\n", kPlayerActionKeys[a], bindingText(s.players[p].b[a]).c_str());
     }
