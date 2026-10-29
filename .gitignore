@@ -14,3 +14,7 @@ spu/
 
 # Reference checkouts (cloned separately, not part of this repo)
 reference/
+
+# Local Claude settings and autonomy hooks
+.claude/settings.local.json
+.claude/hooks/
