@@ -22,6 +22,12 @@ Started from t6-arcade-recomp (port/, tools/, config/, ps3recomp branch t6). Wha
   (0x60000000/0x64000000/0x64800000). The descriptors at 0xCF800000 were being overwritten, so
   the probe saw no device. (T6 has the same latent problem.)
 - Movies: BR also calls cellPamfGetHeaderSize2 and cellDmuxGetAuEx (= GetAu). Attract movie plays.
+- Round-start freeze (2026-10-29): the game's ring manager (func_00405CD8, object 0x43E10780:
+  flags A/B/C at +0x200/+0x280/+0x300, ring chain at +0x80, send-event job at +0x580) waits on
+  the A/B flag of the next ring half. Restarting the walk the instant the parked word changed
+  raced the PPU's multi-word update, the walk parked where no work came, and flag B was never
+  set. The poller now waits 200 us before restarting: 4/4 runs fine (was 2/2 frozen). Logging
+  (SPURS_SPIN_LOG) also hid it. Coin-up -> char select -> fights works; ~56-58 fps in fights.
 - Open: sound (bnusCore on a SPURS taskset + cellSpursQueue; cellSpursQueuePopBody 0x91066667
   missing; task image 1 branches into unlifted LS 0x15088), null call in PS3AIO init
   (func_00470FE8), unresolved sysPrxForUser 0xE76964F5, aspect constants for 4:3, config/package.
