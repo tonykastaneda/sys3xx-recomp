@@ -31,8 +31,10 @@ Video
 -----
   Original / 720p   1280x720 (the arcade resolution)
   1080p / 1440p     window of that size (full screen uses the desktop)
-  4:3               the game only draws 16:9; 4:3 shows it letterboxed in a 4:3 frame,
-                    as a PS3 does on a 4:3 TV.
+  4:3               the 3D is rendered with a true 4:3 projection (camera patched), shown
+                    in a 4:3 frame; the HUD keeps its layout but is drawn ~25% narrower.
+  Accurate character models (on by default): fixes torn/stretched characters by
+                    waiting for the SPU skinning; fights may then run below 60 fps.
 
 Logs go to t6.log next to t6.exe.
 

@@ -173,7 +173,7 @@ static void buildUi()
     g_vsync = mk(L"BUTTON", L"VSync", BS_AUTOCHECKBOX, x0, y0 + 134, 200, 24, ID_VSYNC, 0);
     g_skin = mk(L"BUTTON", L"Accurate character models (fixes torn/stretched characters; fights may run below 60 fps)",
                 BS_AUTOCHECKBOX | BS_MULTILINE, x0, y0 + 164, 460, 40, ID_VSYNC + 50, 0);
-    mk(L"STATIC", L"4:3 renders the game in a 4:3 frame (as on a 4:3 cabinet monitor), not stretched.",
+    mk(L"STATIC", L"4:3 renders the 3D in true 4:3 (taller view, nothing cropped); the HUD is drawn slightly narrower.",
        SS_LEFT, x0, y0 + 220, 470, 36, -1, 0);
 
     buildBindPage(1, 0, kPlayerActionNames, kPlayerActionCount, x0, y0);

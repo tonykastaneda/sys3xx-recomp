@@ -190,6 +190,7 @@ static void present_guest_frame(void)
 
 extern "C" const char* t6_launch_prepare(int argc, char** argv);
 extern "C" void t6_launch_apply_video(void);
+extern "C" void t6_launch_patch_guest(void);
 extern "C" void  cellGcm_fifo_kick_wait(unsigned ms);
 extern "C" void* cellGcm_fifo_kick_event(void);
 extern "C" int (*g_lv2_usleep_hook)(uint32_t lr, uint64_t usec);
@@ -401,6 +402,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    t6_launch_patch_guest();
     derive_vfs_root(elf_path);
     printf("[boot] VFS root: %s\n", ppu_vfs_root);
 

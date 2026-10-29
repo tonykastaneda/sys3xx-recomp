@@ -13,6 +13,8 @@
 #include <vector>
 
 extern "C" void rsx_present_set_screen_aspect(float aspect);
+extern "C" void rsx_present_set_stretch(int on);
+extern "C" unsigned char* vm_base;
 
 static std::string s_elf;
 static float s_screen_aspect;
@@ -88,8 +90,8 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
     setDefault("RSX_DISPLAY", st.video.fullscreen ? "borderless" : "windowed");
     setDefault("RSX_VSYNC", st.video.vsync ? "1" : "0");
     setDefault("RSX_WAIT_JOBS", st.video.skinSync ? "1" : "0");
-    // 4:3: the game only draws 16:9 (it hands its frame to cellResc and never asks the TV's
-    // shape), so 4:3 is the picture a PS3 gives a 4:3 set: the 16:9 frame letterboxed.
+    // 4:3: the game renders a 4:3 projection into its 16:9 targets (t6_launch_patch_guest)
+    // and the frame is stretched over a 4:3 screen; the 2D layer comes out 25% narrower.
     s_screen_aspect = st.video.aspect == t6::Aspect::Narrow ? 4.0f / 3.0f : 0.0f;
 
     if (argc >= 2) return argv[1];
@@ -126,4 +128,22 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
 extern "C" void t6_launch_apply_video(void)
 {
     if (s_screen_aspect > 0.0f) rsx_present_set_screen_aspect(s_screen_aspect);
+    if (s_screen_aspect > 0.0f && !getenv("T6_43_LETTERBOX")) rsx_present_set_stretch(1);
+}
+
+// 4:3 (T6_43_LETTERBOX=1: the old letterbox instead): the game's own aspect constants -- the
+// camera's 16/9 (main camera: fov 60, aspect, near 0.1, far 10000 at 0x126660)
+// and the 16:9 entry of its screen-mode table (0x2168D0: 16:9, 4:3, 3:2, -, 1360x768)
+// -- set to 4/3, and the frame stretched over a 4:3 screen.
+extern "C" void t6_launch_patch_guest(void)
+{
+    if (!(s_screen_aspect > 0.0f) || getenv("T6_43_LETTERBOX")) return;
+    auto put_be_float = [](uint32_t ea, float f) {
+        uint32_t u; memcpy(&u, &f, 4);
+        unsigned char* p = vm_base + ea;
+        p[0] = (unsigned char)(u >> 24); p[1] = (unsigned char)(u >> 16); p[2] = (unsigned char)(u >> 8); p[3] = (unsigned char)u;
+    };
+    put_be_float(0x72B194, 4.0f / 3.0f);
+    put_be_float(0x72E090, 4.0f / 3.0f);
+    fprintf(stderr, "[t6] 4:3: patched the camera and screen-mode aspect to 4/3\n");
 }
