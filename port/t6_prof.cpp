@@ -20,9 +20,15 @@ static volatile DWORD s_watch_list[32]; static volatile long s_watch_n;
 static void sampleThread(HANDLE t, DWORD tid, uintptr_t base, std::unordered_map<uint64_t, unsigned>& hist,
                          std::unordered_map<DWORD, unsigned>& perThread, unsigned& total)
 {
+    /* Only read the context while it is suspended: the bookkeeping below
+     * allocates and takes the loader lock, and a thread stopped holding the
+     * heap or loader lock deadlocked the profiler -- and through the drain,
+     * the game (a fight-load "hang", a boot that never presented). */
     if (SuspendThread(t) == (DWORD)-1) return;
     CONTEXT c{}; c.ContextFlags = CONTEXT_CONTROL;
-    if (GetThreadContext(t, &c)) {
+    const BOOL ok = GetThreadContext(t, &c);
+    ResumeThread(t);
+    if (ok) {
         const uintptr_t rip = (uintptr_t)c.Rip;
         if (rip >= base && rip < base + 0x10000000) { hist[rip - base]++; perThread[tid]++; total++; }
         else {
@@ -33,7 +39,6 @@ static void sampleThread(HANDLE t, DWORD tid, uintptr_t base, std::unordered_map
             s_mod[key]++;
         }
     }
-    ResumeThread(t);
 }
 
 static DWORD WINAPI profThread(LPVOID)
@@ -78,7 +83,8 @@ static DWORD WINAPI profThread(LPVOID)
             fprintf(stderr, "[prof] %u rounds, %u samples in our code; threads:", rounds, total);
             for (auto& kv : perThread) fprintf(stderr, " %lu=%u%%", kv.first, total ? kv.second * 100 / total : 0);
             fputc('\n', stderr);
-            for (size_t i = 0; i < v.size() && i < 40; i++) fprintf(stderr, "[prof] rva=0x%llX %u\n", (unsigned long long)v[i].first, v[i].second);
+            { static int top = -1; if (top < 0) { const char* e = getenv("T6_PROF_TOP"); top = e ? atoi(e) : 40; }   /* RVAs listed */
+              for (size_t i = 0; i < v.size() && i < (size_t)top; i++) fprintf(stderr, "[prof] rva=0x%llX %u\n", (unsigned long long)v[i].first, v[i].second); }
             std::vector<std::pair<std::string, unsigned>> mv(s_mod.begin(), s_mod.end());
             std::sort(mv.begin(), mv.end(), [](auto& a, auto& b) { return a.second > b.second; });
             for (size_t i = 0; i < mv.size() && i < 25; i++) fprintf(stderr, "[prof] outside %s %u\n", mv[i].first.c_str(), mv[i].second);
