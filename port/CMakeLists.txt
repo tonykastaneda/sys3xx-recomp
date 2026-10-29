@@ -172,118 +172,48 @@ elseif(PORT_ENABLE_SPU)
     endif()
 endif()
 
-add_executable(${PROJECT_NAME}
-    main.cpp
+# The lifted game + toolkit scaffold, compiled once and shared by:
+#   t6     the game (main.cpp)
+#   t6dbg  the same game booted through the toolkit's instrumented harness
+#          (runtime/ppu/tests/boot_main.cpp: hang watchdog, crash filter, sampler)
+add_library(t6_game OBJECT
     stubs.cpp
+    t6_usio.cpp
     ${PS3RECOMP_SCAFFOLD}
     ${HLE_NID_TABLE}
     ${RECOMP_SOURCES}
     ${SPU_SOURCES}
 )
+add_executable(t6 main.cpp $<TARGET_OBJECTS:t6_game>)
+add_executable(t6dbg "${PS3RECOMP_DIR}/runtime/ppu/tests/boot_main.cpp" $<TARGET_OBJECTS:t6_game>)
 
-# The lifted SPU sources use bare #include "spu_context.h". Scope that include
-# directory (and their flags) to those TUs alone: adding it to the whole target
-# changes the compile command of every lifted PPU TU, and those are large enough
-# that the needless rebuild is measured in tens of minutes.
-#   SPU_USE_DISPATCH_MT -- route SPU_IB_DISPATCH through the musttail path.
-#   -O2                 -- the target-wide -O1 exists for the huge PPU TUs; the
-#                          SPU sources are small and decode-hot, so they get
-#                          full optimization. The last -O on the line wins.
 if(SPU_SOURCES)
     set_source_files_properties(${SPU_SOURCES} PROPERTIES
         INCLUDE_DIRECTORIES "${PS3RECOMP_DIR}/runtime/spu"
         COMPILE_DEFINITIONS SPU_USE_DISPATCH_MT)
-    if(NOT MSVC OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        set_source_files_properties(${SPU_SOURCES} PROPERTIES COMPILE_OPTIONS "-O2")
-    endif()
+    set_source_files_properties(${SPU_SOURCES} PROPERTIES COMPILE_OPTIONS "-O2")
 endif()
+set_source_files_properties(${RECOMP_SOURCES} PROPERTIES COMPILE_OPTIONS "-w;-ffp-contract=off")
 
-# app.rc carries the icon, the version block and the manifest, and needs a
-# resource compiler. Listing it as a source on a host that has none is not a
-# link error, it is a "no rule to make" for a file nothing can consume.
-if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
-    target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
+foreach(tgt t6_game t6 t6dbg)
+    target_include_directories(${tgt} PRIVATE
+        "${RECOMP_DIR}"
+        "${PS3RECOMP_DIR}/include"
+        "${PS3RECOMP_DIR}/runtime/ppu"
+        "${PS3RECOMP_DIR}/runtime/spu"
+        "${PS3RECOMP_DIR}/runtime/memory"
+        "${PS3RECOMP_DIR}/runtime/syscalls"
+        "${PS3RECOMP_DIR}/runtime/platform"
+        "${PS3RECOMP_DIR}/libs/video"
+        "${CMAKE_CURRENT_SOURCE_DIR}")
+    target_link_libraries(${tgt} PRIVATE ps3recomp_runtime)
+    target_compile_options(${tgt} PRIVATE -Wno-unused-parameter -fno-strict-aliasing -fwrapv)
+    target_compile_definitions(${tgt} PRIVATE _CRT_SECURE_NO_WARNINGS)
+endforeach()
+foreach(tgt t6 t6dbg)
+    set_target_properties(${tgt} PROPERTIES LINKER_LANGUAGE CXX)
+    target_link_libraries(${tgt} PRIVATE dbghelp user32 gdi32 winmm xinput)
+endforeach()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
+    target_sources(t6 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
 endif()
-
-target_include_directories(${PROJECT_NAME} PRIVATE
-    "${RECOMP_DIR}"                            # the generated ppu_recomp.h
-    "${PS3RECOMP_DIR}/include"
-    "${PS3RECOMP_DIR}/runtime/ppu"
-    "${PS3RECOMP_DIR}/runtime/spu"
-    "${PS3RECOMP_DIR}/runtime/memory"
-    "${PS3RECOMP_DIR}/runtime/syscalls"
-    "${PS3RECOMP_DIR}/runtime/platform"        # win32_compat.h and friends
-    "${PS3RECOMP_DIR}/libs/video"
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    ps3recomp_runtime
-)
-
-# The runtime is C++, and on Apple also Objective-C. Letting CMake infer the
-# link language from the generated C would leave the C++ standard library out.
-set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
-
-# Windows system import libraries. dbghelp symbolizes crash-handler addresses
-# against the PDB, user32 and gdi32 are what the backend's window and its GDI
-# present are made of, and winmm is timeBeginPeriod. None of the four names
-# anything a POSIX linker can find; the D3D12 backend's own imports come in
-# through the #pragma comment(lib) in libs/video/rsx_d3d12_backend.c.
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        dbghelp
-        user32
-        gdi32
-        winmm
-    )
-endif()
-
-# ---------------------------------------------------------------------------
-# Compiler-specific flags
-# ---------------------------------------------------------------------------
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        -Wall -Wextra -Wno-unused-parameter
-        -fno-strict-aliasing
-        # The lift spells PPC arithmetic as signed C arithmetic, which must wrap;
-        # without this, clang exploits overflow UB (e.g. folds "x*x < 0" to false).
-        -fwrapv
-    )
-elseif(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        /W3 /wd4100 /wd4244 /wd4267
-        /Zc:__cplusplus         # report correct __cplusplus value
-        # ppu_recomp.h defines PPU_FENCE, the lowering of the guest's
-        # sync/lwsync/eieio/isync, and in C that is <stdatomic.h>. The lifter
-        # writes C++ by default, but --single-file writes ppu_recomp.c, and a
-        # port that took it would not compile without this. The runtime's own
-        # build already carries the same flag for the same reason.
-        /experimental:c11atomics
-    )
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        _CRT_SECURE_NO_WARNINGS
-    )
-endif()
-
-# The lifted translation units are machine-generated and can run to hundreds of
-# thousands of lines each, so they get their own flags:
-#
-#   - warnings off. They are about generated code and nobody will act on them,
-#     and at this volume they bury the diagnostics that matter.
-#   - no floating-point contraction. arm64 fuses a multiply and an add by
-#     default; a PPC fmadd is spelt as one where the lifter means one.
-#   - /bigobj on MSVC. A single lifted file routinely passes the 65,536-section
-#     limit of the default object format.
-if(MSVC)
-    set_source_files_properties(${RECOMP_SOURCES} PROPERTIES
-        COMPILE_OPTIONS "/w;/bigobj")
-else()
-    set_source_files_properties(${RECOMP_SOURCES} PROPERTIES
-        COMPILE_OPTIONS "-w;-ffp-contract=off")
-endif()
-
-# ---------------------------------------------------------------------------
-# Install
-# ---------------------------------------------------------------------------
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)

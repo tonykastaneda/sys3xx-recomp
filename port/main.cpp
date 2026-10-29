@@ -93,6 +93,7 @@ uint64_t ppu_guest_call(uint32_t, uint64_t, uint64_t, uint64_t, uint64_t,
 /* The GCM half of the frame clock. */
 void     cellGcmTickVBlank(void);
 void     cellGcmTickFlip(void);
+void     ppu_gcm_pump(void);              /* deliver pending vblank/flip/user callbacks */
 int      cellGcm_take_flip_pending(void);
 void     cellGcm_rsx_process_fifo(void);      /* drain get -> put */
 unsigned cellGcm_flip_request_count(void);
@@ -193,6 +194,10 @@ static DWORD WINAPI frame_clock(LPVOID)
         while ((long long)(now - next_tick) >= 0 && fired < 240) {
             cellGcmTickVBlank();
             cellGcmTickFlip();
+            /* T6: deliver the vblank handler here, like the PS3 interrupt thread.
+             * The game waits for its vblank counter in sys_cond_wait, a raw
+             * syscall, so no guest thread reaches an HLE call that would pump. */
+            ppu_gcm_pump();
             /* Present a pending flip BEFORE draining any further. The flip
              * fires at a get==put frame boundary on the guest thread, so the
              * batch held right now is exactly the completed frame; presenting
