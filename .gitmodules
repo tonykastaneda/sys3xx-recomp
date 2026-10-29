@@ -1,0 +1,6 @@
+[submodule "ps3recomp"]
+	path = ps3recomp
+	url = https://github.com/soyjxck/ps3recomp.git
+[submodule "third_party/zlib"]
+	path = third_party/zlib
+	url = https://github.com/madler/zlib.git
