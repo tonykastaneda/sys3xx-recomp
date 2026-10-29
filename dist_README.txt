@@ -30,16 +30,23 @@ Default controls (change them in config.exe; XInput pads work too)
 Video
 -----
   Original / 720p   1280x720 (the arcade resolution)
-  1080p / 1440p     window of that size (full screen uses the desktop)
+  1080p / 1440p     rendered at 1.5x / 2x internally, in a window of that size
+                    (full screen uses the desktop). InternalScale=0 in t6.ini renders
+                    1280x720 and scales the picture instead.
   4:3               the 3D is rendered with a true 4:3 projection (camera patched), shown
                     in a 4:3 frame; the HUD keeps its layout but is drawn ~25% narrower.
-  Accurate character models (on by default): fixes torn/stretched characters by
-                    waiting for the SPU skinning; fights may then run below 60 fps.
+  Accurate character models (on by default): draws characters only after the SPU has
+                    finished skinning them (no torn/stretched meshes). Fights run ~60 fps.
+
+Sound and movies
+----------------
+  Music, voices and effects play in character select and fights. Attract mode plays
+  only the logo jingle (arcade attract-sound behaviour). The attract movies play,
+  without their own audio.
 
 Logs go to t6.log next to t6.exe.
 
 Known issues
 ------------
-  - (none for video: 1080p/1440p render at 1.5x/2x internally; InternalScale=0 in t6.ini turns that off)
-
-  - Sound is not verified.
+  - Rarely the game exits silently right after an attract movie ends.
+  - Movie audio is not played.
