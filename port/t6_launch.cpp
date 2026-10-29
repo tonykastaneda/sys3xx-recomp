@@ -134,25 +134,22 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
 extern "C" void t6_launch_apply_video(void)
 {
     if (s_screen_aspect > 0.0f) rsx_present_set_screen_aspect(s_screen_aspect);
-    (void)0;   /* letterbox until the BR aspect patch exists (see t6_launch_patch_guest) */
+    if (s_screen_aspect > 0.0f && !getenv("T6_43_LETTERBOX")) rsx_present_set_stretch(1);
 }
 
 // 4:3 (T6_43_LETTERBOX=1: the old letterbox instead): the game's own aspect constants -- the
-// camera's 16/9 (main camera: fov 60, aspect, near 0.1, far 10000 at 0x126660)
-// and the 16:9 entry of its screen-mode table (0x2168D0: 16:9, 4:3, 3:2, -, 1360x768)
-// -- set to 4/3, and the frame stretched over a 4:3 screen.
+// camera's 16/9 (next to near 0.1 / far 10000) and the 16:9 entry of its screen-mode table
+// (1.77, 16:9, 4:3, 3:2) -- set to 4/3, and the frame stretched over a 4:3 screen. GAME_208
+// addresses; found by matching the bytes around T6's (0x72B194 / 0x72E090).
 extern "C" void t6_launch_patch_guest(void)
 {
-    // Bloodline Rebellion: the camera/screen-mode constants are not located yet (T6's
-    // addresses do not apply), so 4:3 is the letterbox for now.
-    return;
     if (!(s_screen_aspect > 0.0f) || getenv("T6_43_LETTERBOX")) return;
     auto put_be_float = [](uint32_t ea, float f) {
         uint32_t u; memcpy(&u, &f, 4);
         unsigned char* p = vm_base + ea;
         p[0] = (unsigned char)(u >> 24); p[1] = (unsigned char)(u >> 16); p[2] = (unsigned char)(u >> 8); p[3] = (unsigned char)u;
     };
-    put_be_float(0x72B194, 4.0f / 3.0f);
-    put_be_float(0x72E090, 4.0f / 3.0f);
+    put_be_float(0x7016F8, 4.0f / 3.0f);
+    put_be_float(0x7042EC, 4.0f / 3.0f);
     fprintf(stderr, "[t6] 4:3: patched the camera and screen-mode aspect to 4/3\n");
 }
