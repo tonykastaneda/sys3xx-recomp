@@ -127,6 +127,8 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
     setDefault("SPURS_QUEUE_LAYOUT", "2");
     setDefault("SPURS_QUEUE_PUSH", "1");
     setDefault("SPURS_JC_DONE_EVENTS", "0");
+    // If frames ever stall for 4 s, put the job chains' state in t6br.log (free otherwise).
+    setDefault("SPURS_WATCHDOG", "1");
     return s_elf.c_str();
 }
 

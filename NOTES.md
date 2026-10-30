@@ -55,5 +55,13 @@ Started from t6-arcade-recomp (port/, tools/, config/, ps3recomp branch t6). Wha
   rsx_draw_engine_blit + D3D12 ENG_REC_BLIT. Verified with bursts: no ghosts, brightness
   steady (75-83 vs 121/172 flips), real motion blur on fast moves, ~57-60 fps.
   Tools: out/ghostrun.sh, out/burst.sh (frame bursts), RSX_SURF_DUMP_*, RSX_TRACE_AT_OFF.
+- Fight fps (2026-10-30): tools/run.sh leaves PS3_VERBOSE on, which costs a few fps; measure with
+  tools/fightbench.sh (PS3_VERBOSE=0, like the launcher). Profile (T6_PROF=drain): nv3089_blit's
+  guest-memory copy was 14% of the drain thread -- now skipped when the GPU blit ran. Fight mean
+  60.2 fps (slowest 5 s window 59.8).
+- Rare mid-fight freeze: 1 in ~20 bench runs (1 of 21 since the ring fixes). SPURS_WATCHDOG=1
+  (launcher default) dumps chains/guards/flags to the log when frames stall 4 s. The ring halves
+  are guarded (JobGuardNotify after the PPU resets the next half), so it is not the stale-half
+  race; next time it happens the watchdog output says where.
 - Open: fights ~56-58 fps (T6 is ~61), unresolved sysPrxForUser 0xE76964F5 / 0x45FE2FCE and
   cellSpurs 0xA121A224 (harmless so far), 4:3 aspect constants, config.exe / package.

@@ -48,4 +48,4 @@ Logs go to t6br.log next to t6br.exe.
 Known issues
 ------------
   - Movie audio is not played.
-  - Fights run at about 57 fps (the T6 port reaches 60).
+  - Very rarely a fight freezes (about 1 in 20 long test runs); t6br.log then has diagnostics.
