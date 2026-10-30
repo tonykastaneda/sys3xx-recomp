@@ -40,9 +40,11 @@ Started from t6-arcade-recomp (port/, tools/, config/, ps3recomp branch t6). Wha
   All three env vars are launcher defaults.
 - 4:3 (2026-10-29): camera aspect 0x7016F8 and screen-mode entry 0x7042EC (matched by the
   bytes around T6's). Package: tools/package.sh -> dist/T6BR (verified a launcher-started fight).
-- Rare hang (~2 of 20 runs): frames stop when a coin goes in during the attract movie (decoding
-  continues). Any logging hides it; out/hangcatch.sh repeats the run and dumps all thread
-  stacks with cdb when it happens (0 of 12 in the last attempt).
+- Coin-during-movie "hang" (2026-10-30): actually a crash (exit 0xC0000005 in avcodec, found
+  with out/exitcode.ps1 which keeps the full exit code). cellVdecGetPicture decodes held-back
+  AUs on the picture thread while the player's EndSeq/Close flush or free the FFmpeg context on
+  another. Fix: one lock over the cellVdec entry points, guest callbacks deferred to after the
+  outermost unlock. 25/25 runs clean (was ~1 in 13).
 - Ghosting + flicker (2026-10-30): BR draws a velocity buffer (0x01690000, its own Z/stencil
   at 0x01C90000) and blurs the scene into s5 (0x00E50000) with a stencil-limited pass
   (fp d63844612a4fced4). Outside the characters s5 must already hold the scene: the game blits

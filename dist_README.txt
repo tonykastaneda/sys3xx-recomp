@@ -48,5 +48,4 @@ Logs go to t6br.log next to t6br.exe.
 Known issues
 ------------
   - Movie audio is not played.
-  - Rarely the picture freezes if a coin is inserted during an attract movie.
   - Fights run at about 57 fps (the T6 port reaches 60).
