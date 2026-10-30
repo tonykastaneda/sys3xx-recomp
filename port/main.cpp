@@ -342,7 +342,7 @@ static DWORD WINAPI frame_clock(LPVOID)
                   if (!title_hwnd) title_hwnd = own_window();
                   if (title_hwnd && title_f0) {
                       char tb[256];
-                      snprintf(tb, sizeof tb, "%s - %.0f fps", title, (f - title_f0) * 1000.0 / (double)(t - title_t0));
+                      snprintf(tb, sizeof tb, "%s - %05.2f FPS", title, (f - title_f0) * 1000.0 / (double)(t - title_t0));
                       SetWindowTextA(title_hwnd, tb);
                   }
                   title_f0 = f; title_t0 = t;
