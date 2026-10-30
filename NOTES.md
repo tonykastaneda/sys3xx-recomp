@@ -43,5 +43,15 @@ Started from t6-arcade-recomp (port/, tools/, config/, ps3recomp branch t6). Wha
 - Rare hang (~2 of 20 runs): frames stop when a coin goes in during the attract movie (decoding
   continues). Any logging hides it; out/hangcatch.sh repeats the run and dumps all thread
   stacks with cdb when it happens (0 of 12 in the last attempt).
+- Ghosting + flicker (2026-10-30): BR draws a velocity buffer (0x01690000, its own Z/stencil
+  at 0x01C90000) and blurs the scene into s5 (0x00E50000) with a stencil-limited pass
+  (fp d63844612a4fced4). Outside the characters s5 must already hold the scene: the game blits
+  it there every frame with NV3089 (s2 0x00B50000 -> s5, plus 512x384 downsamples into
+  0x01510000/0x01450000). The draw engine ignored those blits (only the live-draw renderer
+  mirrored them), so s5 and the downsample targets kept old frames: stair-stepped ghosts of
+  earlier camera shots, and exposure/bloom flipping between two levels. Fix in ps3recomp:
+  rsx_draw_engine_blit + D3D12 ENG_REC_BLIT. Verified with bursts: no ghosts, brightness
+  steady (75-83 vs 121/172 flips), real motion blur on fast moves, ~57-60 fps.
+  Tools: out/ghostrun.sh, out/burst.sh (frame bursts), RSX_SURF_DUMP_*, RSX_TRACE_AT_OFF.
 - Open: fights ~56-58 fps (T6 is ~61), unresolved sysPrxForUser 0xE76964F5 / 0x45FE2FCE and
   cellSpurs 0xA121A224 (harmless so far), 4:3 aspect constants, config.exe / package.
