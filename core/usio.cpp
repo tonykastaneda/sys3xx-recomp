@@ -8,10 +8,11 @@
 //   channel 0  : registers (0x1000 = Tekken inputs, 0x1800 = firmware id, ...)
 //   channel 2+ : backup SRAM pages (16 x 64 KB), persisted to usio_backup.bin
 //
-// Inputs come from t6.ini (written by config.exe): keyboard + XInput.
+// Inputs come from <game>.ini (written by config.exe): keyboard + XInput.
 
 #include "ppu_recomp.h"
-#include "t6_settings.h"
+#include "settings.h"
+#include "game_profile.h"
 
 #include <windows.h>
 #include <xinput.h>
@@ -121,7 +122,7 @@ void putDesc(Device& d, uint32_t at, const uint8_t* p, size_t n, uint16_t total)
 void buildDevices()
 {
     static const uint8_t usio[] = {
-        18, 0x01, 0x10, 0x01, 0xFF, 0x00, 0xFF, 0x08, 0x9A, 0x0B, 0x10, 0x09, 0x10, 0x09, 0x01, 0x02, 0x00, 0x01,
+        18, 0x01, 0x10, 0x01, 0xFF, 0x00, 0xFF, 0x08, 0x9A, 0x0B, 0x00, 0x09, 0x10, 0x09, 0x01, 0x02, 0x00, 0x01,   // PID 0x0900: BR's probe wants it exactly (T6 takes any)
         9, 0x02, 39, 0, 0x01, 0x01, 0x00, 0xC0, 0x32,                // config, wTotalLength 39
         9, 0x04, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00,           // interface, 3 endpoints
         7, 0x05, 0x01, 0x02, 0x40, 0x00, 0x00,                       // EP 0x01 bulk OUT
@@ -136,7 +137,7 @@ void buildDevices()
         7, 0x05, 0x02, 0x02, 0x00, 0x02, 0xFF,
     };
     g_devs[0] = {kUsio, 0, 0, 0, {}, 0};
-    g_devs[1] = {kKey, 0, 0, 0, {"SMI Corporation", "USB DISK", "76C0D0000000"}, 0};
+    g_devs[1] = {kKey, 0, 0, 0, {"SMI Corporation", "USB DISK", GAME_USB_SERIAL}, 0};
     putDesc(g_devs[0], kDescBase, usio, sizeof usio, 39);
     putDesc(g_devs[1], kDescBase + 0x100, key, sizeof key, 0x20);
 }
@@ -600,10 +601,10 @@ void hGetPrivateData(ppu_context* ctx)
 // ---- USB key (dongle) identity -------------------------------------------------------
 // The game asks lv2 which USB device is mounted at /dev_usbXXX through sys_fs_fcntl
 // 0xC0000015 (vid/pid) and 0xC000001C (vid/pid/serial), and checks it against its key
-// file. Report the TeknoParrot dump's key: /dev_usb000 = 0693:0026 serial 76C0D0000000.
+// file. Report the TeknoParrot dump's key: /dev_usb000 = 0693:0026, serial GAME_USB_SERIAL.
 typedef int64_t (*Lv2Fn)(ppu_context*);
 Lv2Fn g_prevFcntl = nullptr;
-std::string g_usbSerial = "76C0D0000000";
+std::string g_usbSerial = GAME_USB_SERIAL;
 uint16_t g_usbVid = 0x0693, g_usbPid = 0x0026;
 
 int64_t sysFsFcntl(ppu_context* ctx)

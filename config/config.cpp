@@ -1,4 +1,4 @@
-// config.exe: settings for the T6 arcade port. Writes t6.ini next to itself; t6.exe reads it.
+// config.exe: settings for a sys3xx-recomp game. Writes <game>.ini next to itself; <game>.exe reads it.
 // Plain Win32 + XInput, no other dependencies.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -12,7 +12,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "../port/t6_settings.h"
+#include "../core/settings.h"
+#include "game_profile.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "xinput.lib")
@@ -204,7 +205,7 @@ static void readUi()
 static bool save()
 {
     readUi();
-    if (!saveSettings(g_ini.c_str(), g_cfg)) { setStatus(L"Could not write t6.ini"); return false; }
+    if (!saveSettings(g_ini.c_str(), g_cfg)) { setStatus(L"Could not write " GAME_EXE_W L".ini"); return false; }
     setStatus(L"Saved.");
     return true;
 }
@@ -299,11 +300,11 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l)
         if (id == ID_PLAY && save()) {
             wchar_t exe[MAX_PATH]; GetModuleFileNameW(nullptr, exe, MAX_PATH);
             std::wstring dir(exe); dir = dir.substr(0, dir.find_last_of(L"\\/"));
-            std::wstring game = dir + L"\\t6.exe";
+            std::wstring game = dir + L"\\" GAME_EXE_W L".exe";
             if ((INT_PTR)ShellExecuteW(h, L"open", game.c_str(), nullptr, dir.c_str(), SW_SHOWNORMAL) > 32)
                 PostQuitMessage(0);
             else
-                setStatus(L"Could not start t6.exe (is it next to config.exe?)");
+                setStatus(L"Could not start " GAME_EXE_W L".exe (is it next to config.exe?)");
         }
         return 0;
     }
@@ -350,7 +351,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR cmd, int show)
     g_dpi = (int)GetDpiForSystem();
 
     wchar_t exe[MAX_PATH]; GetModuleFileNameW(nullptr, exe, MAX_PATH);
-    g_ini = exe; g_ini = g_ini.substr(0, g_ini.find_last_of(L"\\/")) + L"\\t6.ini";
+    g_ini = exe; g_ini = g_ini.substr(0, g_ini.find_last_of(L"\\/")) + L"\\" GAME_EXE_W L".ini";
     g_cfg = loadSettings(g_ini.c_str());
 
     NONCLIENTMETRICSW ncm{sizeof ncm};
@@ -364,7 +365,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR cmd, int show)
     RegisterClassExW(&wc);
     RECT r{0, 0, S(kClientW), S(kClientH)};
     AdjustWindowRect(&r, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
-    HWND h = CreateWindowExW(0, wc.lpszClassName, L"Tekken 6 (arcade) - Settings",
+    HWND h = CreateWindowExW(0, wc.lpszClassName, GAME_NAME_W L" - Settings",
                              WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
                              CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
                              nullptr, nullptr, inst, nullptr);

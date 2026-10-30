@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Assemble dist/T6: t6.exe + config.exe + the FFmpeg DLLs the movie decoder loads + README.
-# The game dump is NOT copied (disk space): t6.ini's [Paths] Game= points at it.
-#   tools/package.sh [game dir]      (default: the repo's game/)
+# Assemble dist/<game>/: <exe>.exe + config.exe + the FFmpeg DLLs the movie decoder loads
+# + README. The dump is NOT copied (disk space): <exe>.ini's [Paths] Game= points at it.
+#   tools/package.sh <game> [dump dir]      (default: GAME_DUMP from local.env)
 set -e
-root="$(cd "$(dirname "$0")/.." && pwd)"; out="$root/dist/T6"
-game="$(cygpath -w "${1:-$root/game}")"
+. "$(dirname "$0")/game.sh"
+out="$ROOT/dist/$GAME"; b="$WORK/build"
+dump="${2:-$GAME_DUMP}"
 mkdir -p "$out"
-cp -u "$root/build/t6.exe" "$root/build/config.exe" "$out/"
-for d in avcodec-62 avutil-60 swresample-6; do cp -u "$root/build/$d.dll" "$out/"; done
-cp -u "$root/dist_README.txt" "$out/README.txt"
-if [ ! -f "$out/t6.ini" ]; then
-  printf '[Paths]\r\nGame=%s\r\n' "$game" > "$out/t6.ini"   # t6.exe fills in the rest on first run
+cp -u "$b/$GAME_EXE.exe" "$b/config.exe" "$out/"
+for d in avcodec-62 avutil-60 swresample-6; do cp -u "$b/$d.dll" "$out/"; done
+[ -f "$GDIR/README.txt" ] && cp -u "$GDIR/README.txt" "$out/README.txt"
+if [ ! -f "$out/$GAME_EXE.ini" ] && [ -n "$dump" ]; then
+  printf '[Paths]\r\nGame=%s\r\n' "$(cygpath -w "$dump")" > "$out/$GAME_EXE.ini"   # the exe fills in the rest
 fi
 du -sh "$out"; ls "$out"

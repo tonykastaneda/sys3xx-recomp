@@ -1,25 +1,23 @@
 # Python environment
 .venv/
+__pycache__/
 
-# Build output
-build*/
+# Per-game work: extracted ELF, lifted code, SPU lift, builds, logs (tools/*.sh <game>)
+work/
+# Per-game local paths (GAME_DUMP=...) -- see tools/game.sh
+games/*/local.env
 
-# Game files and anything generated from them. Never commit these.
+# Game files. Never commit these.
 game/
 dump/
-elf/
-out/
-recompiled*/
-spu/
+*.SELF
+*.elf
+
+# Packaged builds (tools/package.sh <game>)
+dist/
 
 # Reference checkouts (cloned separately, not part of this repo)
 reference/
 
-# Local Claude settings and autonomy hooks
-.claude/settings.local.json
-.claude/hooks/
-recompiled_113/
-spu/
-
-# Packaged build (tools/package.sh)
-dist/
+# Local Claude settings and hooks
+.claude/

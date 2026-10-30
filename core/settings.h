@@ -1,4 +1,4 @@
-// t6.ini: shared by config.exe (writes it) and t6.exe (reads it). Header-only, Win32.
+// <game>.ini: shared by config.exe (writes it) and <game>.exe (reads it). Header-only, Win32.
 //
 // [Video]
 // Resolution=1080p        Original | 720p | 1080p | 1440p
@@ -39,7 +39,7 @@ inline void resolutionSize(Resolution r, Aspect a, int& w, int& h)
     w = a == Aspect::Narrow ? h * 4 / 3 : h * 16 / 9;
 }
 
-// Player inputs of the Tekken 6 cabinet (one stick + 4 buttons + start per side).
+// Player inputs of a fighting-game cabinet (one stick + 4 buttons + start per side).
 enum PlayerAction { Up, Down, Left, Right, LP, RP, LK, RK, Start, kPlayerActionCount };
 inline const char* const kPlayerActionNames[kPlayerActionCount] = {
     "Up", "Down", "Left", "Right", "1  Left Punch", "2  Right Punch", "3  Left Kick", "4  Right Kick", "Start"};
@@ -74,7 +74,7 @@ struct Settings {
     PlayerBinds players[2];
     SystemBinds system;
     int controller[2] = {0, 1};   // XInput pad per player (0..3), -1 = none (keyboard only)
-    std::string gamePath;   // [Paths] Game=, empty = the "game" folder next to t6.exe
+    std::string gamePath;   // [Paths] Game=, empty = the "game" folder next to the exe
 };
 
 // Point every pad binding of a player at that player's controller (button kept).
@@ -221,7 +221,7 @@ inline bool saveSettings(P path_, const Settings& s)
     std::string path = iniNarrow(path_);
     FILE* f = fopen(path.c_str(), "w");
     if (!f) return false;
-    fprintf(f, "; Tekken 6 (arcade) settings. Edit with config.exe.\n\n[Video]\n");
+    fprintf(f, "; Settings. Edit with config.exe.\n\n[Video]\n");
     fprintf(f, "SkinSync=%d\n", s.video.skinSync ? 1 : 0);
     fprintf(f, "Resolution=%s\nAspect=%s\nFullscreen=%d\nVSync=%d\n",
             resolutionName(s.video.resolution), s.video.aspect == Aspect::Narrow ? "4:3" : "16:9",
@@ -236,7 +236,7 @@ inline bool saveSettings(P path_, const Settings& s)
     fprintf(f, "\n[System]\n");
     for (int a = 0; a < kSystemActionCount; a++)
         fprintf(f, "%s=%s\n", kSystemActionKeys[a], bindingText(s.system.b[a]).c_str());
-    fprintf(f, "\n[Paths]\n; Folder with the extracted game (it holds dev_hdd0). Empty = the \"game\" folder next to t6.exe.\nGame=%s\n",
+    fprintf(f, "\n[Paths]\n; Folder with the extracted game (it holds dev_hdd0). Empty = the \"game\" folder next to the game exe.\nGame=%s\n",
             s.gamePath.c_str());
     fclose(f);
     return true;

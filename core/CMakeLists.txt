@@ -1,9 +1,22 @@
 cmake_minimum_required(VERSION 3.20)
-project(t6
+project(sys3xx
     VERSION 0.1.0
     LANGUAGES C CXX
-    DESCRIPTION "Recompiled PS3 game project (ps3recomp)"
+    DESCRIPTION "Namco System 357/369 arcade games, statically recompiled (ps3recomp)"
 )
+
+# ---------------------------------------------------------------------------
+# Which game: games/<GAME>/ holds its profile (game_profile.h, game.env) and its
+# native hooks (patches.cpp); work/<GAME>/ holds its lifted code and build.
+# tools/build.sh <game> passes this.
+# ---------------------------------------------------------------------------
+set(GAME "t6" CACHE STRING "Game to build (a folder under games/)")
+get_filename_component(GAME_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../games/${GAME}" ABSOLUTE)
+get_filename_component(WORK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../work/${GAME}" ABSOLUTE)
+if(NOT EXISTS "${GAME_DIR}/game_profile.h")
+    message(FATAL_ERROR "No game profile at ${GAME_DIR}/game_profile.h (GAME=${GAME})")
+endif()
+message(STATUS "Game:            ${GAME} (${GAME_DIR})")
 
 # ---------------------------------------------------------------------------
 # Standards
@@ -36,7 +49,7 @@ if(NOT DEFINED PS3RECOMP_DIR)
 endif()
 get_filename_component(PS3RECOMP_DIR "${PS3RECOMP_DIR}" ABSOLUTE)
 
-set(RECOMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../recompiled_113" CACHE PATH
+set(RECOMP_DIR "${WORK_DIR}/recompiled" CACHE PATH
     "Directory holding the lifter's output: ppu_recomp.h and the lifted sources")
 get_filename_component(RECOMP_DIR "${RECOMP_DIR}" ABSOLUTE)
 
@@ -134,7 +147,7 @@ set(PS3RECOMP_SCAFFOLD
 # match, which is worse than shipping none. Both the table and the job-module
 # registry self-register from constructors and are therefore optional -- a tree
 # that has not lifted its SPU images yet configures and links without them.
-set(SPU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../spu" CACHE PATH
+set(SPU_DIR "${WORK_DIR}/spu" CACHE PATH
     "Directory holding the lifted SPU images (<SPU_DIR>/<image>/spu_recomp.c)")
 option(PORT_ENABLE_SPU "Compile and register the title's lifted SPU images" ON)
 
@@ -160,7 +173,7 @@ elseif(PORT_ENABLE_SPU)
              "${PS3RECOMP_DIR}/runtime/spu/spu_dispatch_mt.c")
         # Generated beside the lift; each is present only once its generator
         # has been run, so each is included only if it is actually here.
-        foreach(gen IN ITEMS spu_workloads.c t6_spu_jobs.c jobmods_register.c taskset_policy_bytes.c)
+        foreach(gen IN ITEMS spu_workloads.c spu_jobs.c jobmods_register.c taskset_policy_bytes.c)
             if(EXISTS "${SPU_DIR}/${gen}")
                 list(APPEND SPU_SOURCES "${SPU_DIR}/${gen}")
             else()
@@ -173,22 +186,22 @@ elseif(PORT_ENABLE_SPU)
 endif()
 
 # The lifted game + toolkit scaffold, compiled once and shared by:
-#   t6     the game (main.cpp)
-#   t6dbg  the same game booted through the toolkit's instrumented harness
-#          (runtime/ppu/tests/boot_main.cpp: hang watchdog, crash filter, sampler)
-add_library(t6_game OBJECT
+#   <game>     the game (main.cpp), e.g. t6.exe
+#   <game>dbg  the same game booted through the toolkit's instrumented harness
+#              (runtime/ppu/tests/boot_main.cpp: hang watchdog, crash filter, sampler)
+add_library(game_obj OBJECT
     stubs.cpp
-    t6_usio.cpp
-    t6_movie.cpp
-    t6_prof.cpp
-    t6_patches.cpp
+    usio.cpp
+    movie.cpp
+    prof.cpp
+    "${GAME_DIR}/patches.cpp"
     ${PS3RECOMP_SCAFFOLD}
     ${HLE_NID_TABLE}
     ${RECOMP_SOURCES}
     ${SPU_SOURCES}
 )
-add_executable(t6 main.cpp t6_launch.cpp $<TARGET_OBJECTS:t6_game>)
-add_executable(t6dbg "${PS3RECOMP_DIR}/runtime/ppu/tests/boot_main.cpp" $<TARGET_OBJECTS:t6_game>)
+add_executable(${GAME} main.cpp launch.cpp $<TARGET_OBJECTS:game_obj>)
+add_executable(${GAME}dbg "${PS3RECOMP_DIR}/runtime/ppu/tests/boot_main.cpp" $<TARGET_OBJECTS:game_obj>)
 
 if(SPU_SOURCES)
     set_source_files_properties(${SPU_SOURCES} PROPERTIES
@@ -198,7 +211,7 @@ if(SPU_SOURCES)
 endif()
 set_source_files_properties(${RECOMP_SOURCES} PROPERTIES COMPILE_OPTIONS "-w;-ffp-contract=off")
 
-foreach(tgt t6_game t6 t6dbg)
+foreach(tgt game_obj ${GAME} ${GAME}dbg)
     target_include_directories(${tgt} PRIVATE
         "${RECOMP_DIR}"
         "${PS3RECOMP_DIR}/include"
@@ -208,18 +221,19 @@ foreach(tgt t6_game t6 t6dbg)
         "${PS3RECOMP_DIR}/runtime/syscalls"
         "${PS3RECOMP_DIR}/runtime/platform"
         "${PS3RECOMP_DIR}/libs/video"
-        "${CMAKE_CURRENT_SOURCE_DIR}")
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${GAME_DIR}")
     target_link_libraries(${tgt} PRIVATE ps3recomp_runtime)
     target_compile_options(${tgt} PRIVATE -Wno-unused-parameter -fno-strict-aliasing -fwrapv)
     target_compile_definitions(${tgt} PRIVATE _CRT_SECURE_NO_WARNINGS)
 endforeach()
-foreach(tgt t6 t6dbg)
+foreach(tgt ${GAME} ${GAME}dbg)
     set_target_properties(${tgt} PROPERTIES LINKER_LANGUAGE CXX)
     target_link_libraries(${tgt} PRIVATE dbghelp user32 gdi32 winmm xinput)
     target_link_options(${tgt} PRIVATE "/MAP:${CMAKE_BINARY_DIR}/${tgt}.map")
 endforeach()
-# t6.exe is double-clicked: no console window (t6_launch.cpp logs to t6.log instead).
-target_link_options(t6 PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+# <game>.exe is double-clicked: no console window (launch.cpp logs to <game>.log instead).
+target_link_options(${GAME} PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
-    target_sources(t6 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
+    target_sources(${GAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
 endif()

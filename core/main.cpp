@@ -410,7 +410,7 @@ static LONG WINAPI vm_commit_veh(EXCEPTION_POINTERS* ep)
 }
 
 /* A fault nothing handled: say where (module + offset, then a backtrace of
- * RVAs into t6.exe for tools/sym.py) instead of the process vanishing. */
+ * RVAs into <game>.exe for tools/sym.py) instead of the process vanishing. */
 static LONG WINAPI crash_filter(EXCEPTION_POINTERS* ep)
 {
     char* mbase = (char*)GetModuleHandleA(NULL);
@@ -444,7 +444,7 @@ static bool alloc_guest_vm(void)
     AddVectoredExceptionHandler(1, vm_commit_veh);
     SetUnhandledExceptionFilter(crash_filter);
     /* A silent end of the process (a guest exit, or a fail-fast the filter
-     * cannot catch) at least leaves a line in t6.log. */
+     * cannot catch) at least leaves a line in <game>.log. */
     atexit([] { fprintf(stderr, "[t6] process exiting (guest sys_process_exit=%d code=%d)\n",
                         (int)g_sys_process_exit_called, (int)g_sys_process_exit_code); fflush(stderr); });
     vm_base = (uint8_t*)VirtualAlloc(NULL, VM_SIZE, MEM_RESERVE, PAGE_READWRITE);
@@ -477,7 +477,7 @@ static void harness_guest_caller(uint32_t opd, uint64_t a0, uint64_t a1,
 int main(int argc, char** argv)
 {
     /* No arguments: a double-click. t6_launch.cpp finds the game, extracts the
-     * ELF and turns t6.ini into the boot and renderer settings. */
+     * ELF and turns <game>.ini into the boot and renderer settings. */
     const char* elf_path = t6_launch_prepare(argc, argv);
 
 #ifdef _WIN32

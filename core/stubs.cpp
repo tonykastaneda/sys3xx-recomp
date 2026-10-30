@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <cstdio>
 #include <cstring>
+#include "game_profile.h"
 /*
  * ps3recomp game project -- game-specific hooks and overrides.
  *
@@ -40,7 +41,7 @@ extern "C" void ps3_load_prx_modules(void)
     GetModuleFileNameA(NULL, dir, MAX_PATH);
     if (char* s = strrchr(dir, '\\')) *s = 0;
     char ini[MAX_PATH], sram[MAX_PATH];
-    snprintf(ini, sizeof ini, "%s\\t6.ini", dir);
+    snprintf(ini, sizeof ini, "%s\\" GAME_EXE ".ini", dir);
     snprintf(sram, sizeof sram, "%s\\usio_backup.bin", dir);
     t6_io_init(ini, sram);
 }
