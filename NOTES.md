@@ -64,4 +64,4 @@ Started from t6-arcade-recomp (port/, tools/, config/, ps3recomp branch t6). Wha
   are guarded (JobGuardNotify after the PPU resets the next half), so it is not the stale-half
   race; next time it happens the watchdog output says where.
 - Open: unresolved sysPrxForUser 0xE76964F5 / 0x45FE2FCE and
-  cellSpurs 0xA121A224 (harmless so far), 4:3 aspect constants, config.exe / package.
+  cellSpurs 0xA121A224 (harmless so far); movie audio; the rare mid-fight freeze above.
