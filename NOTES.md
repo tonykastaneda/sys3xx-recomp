@@ -38,5 +38,10 @@ Started from t6-arcade-recomp (port/, tools/, config/, ps3recomp branch t6). Wha
   buffer at +0x10; (4) SPURS_QUEUE_PUSH=1 and a new cellSpursQueuePopBody. The PPU sends "STAT"
   and gets "END "; music and effects come out from character select on (AUDIO_PEAK, AUDIO_WAV).
   All three env vars are launcher defaults.
+- 4:3 (2026-10-29): camera aspect 0x7016F8 and screen-mode entry 0x7042EC (matched by the
+  bytes around T6's). Package: tools/package.sh -> dist/T6BR (verified a launcher-started fight).
+- Rare hang (~2 of 20 runs): frames stop when a coin goes in during the attract movie (decoding
+  continues). Any logging hides it; out/hangcatch.sh repeats the run and dumps all thread
+  stacks with cdb when it happens (0 of 12 in the last attempt).
 - Open: fights ~56-58 fps (T6 is ~61), unresolved sysPrxForUser 0xE76964F5 / 0x45FE2FCE and
   cellSpurs 0xA121A224 (harmless so far), 4:3 aspect constants, config.exe / package.
