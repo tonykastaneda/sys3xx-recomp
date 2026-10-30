@@ -206,6 +206,21 @@ void hGetHeaderSize(ppu_context* ctx)                // (PamfHeader*, u64 fileSi
     if (out) wr64(out, (uint64_t)rd32(p + 8) << 11);
     RET(0);
 }
+// (PamfHeader*, u64 fileSize, u32 attribute, u64* size) (T6 BR). attribute 1 = MINIMUM_HEADER,
+// the header without its EP tables (RPCS3 cellPamf.cpp).
+void hGetHeaderSize2(ppu_context* ctx)
+{
+    const uint32_t p = (uint32_t)ctx->gpr[3], attr = (uint32_t)ctx->gpr[5], out = (uint32_t)ctx->gpr[6];
+    if (!p || memcmp(G(p), "PAMF", 4) != 0) { RET(kErrUnknownType); return; }
+    uint64_t size = (uint64_t)rd32(p + 8) << 11;
+    if (attr & 1) {
+        const uint64_t min = kSeq + 4 + rd32(p + kSeq);
+        if (min > size) { RET(0x80610502u); return; }   // INVALID_PAMF
+        size = min;
+    }
+    if (out) wr64(out, size);
+    RET(0);
+}
 void hGetStreamOffsetAndSize(ppu_context* ctx)       // (PamfHeader*, u64 fileSize, u64* off, u64* size)
 {
     const uint32_t p = (uint32_t)ctx->gpr[3], off = (uint32_t)ctx->gpr[5], sz = (uint32_t)ctx->gpr[6];
@@ -539,6 +554,7 @@ extern "C" void t6_movie_init(void)
     ps3_hle_register_ctx(0xF61609D6u, "cellPamfReaderGetPresentationEndTime", hEndTime);
     ps3_hle_register_ctx(0x01067E22u, "cellPamfStreamTypeToEsFilterId", hStreamTypeToEsFilterId);
     ps3_hle_register_ctx(0xCA8181C1u, "cellPamfGetHeaderSize", hGetHeaderSize);
+    ps3_hle_register_ctx(0x90FC9A59u, "cellPamfGetHeaderSize2", hGetHeaderSize2);
     ps3_hle_register_ctx(0x44F5C9E3u, "cellPamfGetStreamOffsetAndSize", hGetStreamOffsetAndSize);
     ps3_hle_register_ctx(0xA2D4189Bu, "cellDmuxQueryAttr", hDmuxQueryAttr);
     ps3_hle_register_ctx(0x02170D1Au, "cellDmuxQueryEsAttr", hDmuxQueryEsAttr);
@@ -549,6 +565,7 @@ extern "C" void t6_movie_init(void)
     ps3_hle_register_ctx(0x05371C8Du, "cellDmuxDisableEs", hDmuxDisableEs);
     ps3_hle_register_ctx(0x21D424F0u, "cellDmuxResetEs", hDmuxResetEs);
     ps3_hle_register_ctx(0x42C716B5u, "cellDmuxGetAu", hDmuxGetAu);
+    ps3_hle_register_ctx(0x2C9A5857u, "cellDmuxGetAuEx", hDmuxGetAu);   // CellDmuxAuInfoEx == CellDmuxAuInfo (T6 BR)
     ps3_hle_register_ctx(0x24EA6474u, "cellDmuxReleaseAu", hDmuxReleaseAu);
     ps3_hle_register_ctx(0xEBB3B2BDu, "cellDmuxFlushEs", hDmuxFlushEs);
 }
