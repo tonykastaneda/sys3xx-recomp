@@ -16,7 +16,7 @@
 
 extern "C" uint8_t* vm_base;
 
-// 1 = JAPAN, 2 = OVERSEAS, 3 = KOREA. T6_REGION overrides (set by t6.exe from t6.ini).
+// 1 = JAPAN, 2 = OVERSEAS, 3 = KOREA. T6_REGION overrides (set by t6br.exe from t6.ini).
 static uint32_t region()
 {
     const char* e = getenv("T6_REGION");

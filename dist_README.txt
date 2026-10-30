@@ -2,17 +2,17 @@ TEKKEN 6: BLOODLINE REBELLION (arcade, System 357) - native Windows port
 =========================================================================
 
   config.exe   settings: resolution, 4:3 / 16:9, fullscreen, VSync, Player 1 / Player 2 / system buttons
-  t6.exe       the game. Double-click it (or use "Save & Play" in config.exe).
+  t6br.exe       the game. Double-click it (or use "Save & Play" in config.exe).
 
 Game files
 ----------
-t6.exe needs the extracted TeknoParrot dump of the game (the folder that holds dev_hdd0).
-Either put it in a folder named "game" next to t6.exe, or set its path in t6.ini:
+t6br.exe needs the extracted TeknoParrot dump of the game (the folder that holds dev_hdd0).
+Either put it in a folder named "game" next to t6br.exe, or set its path in t6.ini:
 
   [Paths]
   Game=C:\path\to\the\dump
 
-On first start t6.exe extracts GAME_208.elf into the "cache" folder (about 8 MB) and
+On first start t6br.exe extracts GAME_208.elf into the "cache" folder (about 8 MB) and
 creates the USB key file T6.ID in the game folder.
 
 Default controls (change them in config.exe; XInput pads work too)
@@ -43,7 +43,7 @@ Sound and movies
   Music, voices and effects play from character select on. The attract movies play,
   without their own audio.
 
-Logs go to t6.log next to t6.exe.
+Logs go to t6br.log next to t6br.exe.
 
 Known issues
 ------------

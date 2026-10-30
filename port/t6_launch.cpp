@@ -1,10 +1,10 @@
-// t6.exe with no arguments: everything a double-click needs.
+// t6br.exe with no arguments: everything a double-click needs.
 //   - finds the game dump (<exe>\game, else <exe>\..\game, or [Paths] Game= in t6.ini)
 //   - extracts GAME_208.elf from the debug SELF into <exe>\cache once
 //   - creates the 16-byte USB key id file the game checks for
 //   - sets the PS3_* paths and the arcade boot arguments
 //   - turns t6.ini's [Video] section into the renderer's RSX_* settings
-//   - sends the log to <exe>\t6.log when there is no console
+//   - sends the log to <exe>\t6br.log when there is no console
 // Variables already set in the environment win, so dev scripts can still override anything.
 #include "t6_settings.h"
 #include <direct.h>
@@ -68,7 +68,7 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
 
     // No console (double-click of the GUI-subsystem exe): log to a file.
     if (!GetStdHandle(STD_OUTPUT_HANDLE) || GetFileType(GetStdHandle(STD_OUTPUT_HANDLE)) == FILE_TYPE_UNKNOWN) {
-        const std::string log = dir + "\\t6.log";
+        const std::string log = dir + "\\t6br.log";
         freopen(log.c_str(), "w", stdout);
         _dup2(_fileno(stdout), 2);
         freopen(log.c_str(), "a", stderr);
@@ -104,7 +104,7 @@ extern "C" const char* t6_launch_prepare(int argc, char** argv)
     char full[MAX_PATH]; GetFullPathNameA(game.c_str(), MAX_PATH, full, nullptr); game = full;
     const std::string self = game + "\\dev_hdd0\\game\\SCEEXE000\\USRDIR\\GAME_208.SELF";
     if (!exists(self))
-        fail("Game files not found.\n\nPut the extracted Tekken 6 Bloodline Rebellion (arcade) dump in a folder named \"game\" next to t6.exe "
+        fail("Game files not found.\n\nPut the extracted Tekken 6 Bloodline Rebellion (arcade) dump in a folder named \"game\" next to t6br.exe "
              "(it must contain dev_hdd0\\game\\SCEEXE000\\USRDIR\\GAME_208.SELF), or set [Paths] Game= in t6.ini.\n\nLooked in: " + game);
 
     s_elf = dir + "\\cache\\GAME_208.elf";

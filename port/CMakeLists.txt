@@ -187,7 +187,7 @@ add_library(t6_game OBJECT
     ${RECOMP_SOURCES}
     ${SPU_SOURCES}
 )
-add_executable(t6 main.cpp t6_launch.cpp $<TARGET_OBJECTS:t6_game>)
+add_executable(t6br main.cpp t6_launch.cpp $<TARGET_OBJECTS:t6_game>)
 add_executable(t6dbg "${PS3RECOMP_DIR}/runtime/ppu/tests/boot_main.cpp" $<TARGET_OBJECTS:t6_game>)
 
 if(SPU_SOURCES)
@@ -198,7 +198,7 @@ if(SPU_SOURCES)
 endif()
 set_source_files_properties(${RECOMP_SOURCES} PROPERTIES COMPILE_OPTIONS "-w;-ffp-contract=off")
 
-foreach(tgt t6_game t6 t6dbg)
+foreach(tgt t6_game t6br t6dbg)
     target_include_directories(${tgt} PRIVATE
         "${RECOMP_DIR}"
         "${PS3RECOMP_DIR}/include"
@@ -213,13 +213,13 @@ foreach(tgt t6_game t6 t6dbg)
     target_compile_options(${tgt} PRIVATE -Wno-unused-parameter -fno-strict-aliasing -fwrapv)
     target_compile_definitions(${tgt} PRIVATE _CRT_SECURE_NO_WARNINGS)
 endforeach()
-foreach(tgt t6 t6dbg)
+foreach(tgt t6br t6dbg)
     set_target_properties(${tgt} PROPERTIES LINKER_LANGUAGE CXX)
     target_link_libraries(${tgt} PRIVATE dbghelp user32 gdi32 winmm xinput)
     target_link_options(${tgt} PRIVATE "/MAP:${CMAKE_BINARY_DIR}/${tgt}.map")
 endforeach()
-# t6.exe is double-clicked: no console window (t6_launch.cpp logs to t6.log instead).
-target_link_options(t6 PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+# t6br.exe is double-clicked: no console window (t6_launch.cpp logs to t6br.log instead).
+target_link_options(t6br PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
-    target_sources(t6 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
+    target_sources(t6br PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app.rc")
 endif()

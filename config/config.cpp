@@ -1,4 +1,4 @@
-// config.exe: settings for the T6 Bloodline Rebellion arcade port. Writes t6.ini next to itself; t6.exe reads it.
+// config.exe: settings for the T6 Bloodline Rebellion arcade port. Writes t6.ini next to itself; t6br.exe reads it.
 // Plain Win32 + XInput, no other dependencies.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -299,11 +299,11 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l)
         if (id == ID_PLAY && save()) {
             wchar_t exe[MAX_PATH]; GetModuleFileNameW(nullptr, exe, MAX_PATH);
             std::wstring dir(exe); dir = dir.substr(0, dir.find_last_of(L"\\/"));
-            std::wstring game = dir + L"\\t6.exe";
+            std::wstring game = dir + L"\\t6br.exe";
             if ((INT_PTR)ShellExecuteW(h, L"open", game.c_str(), nullptr, dir.c_str(), SW_SHOWNORMAL) > 32)
                 PostQuitMessage(0);
             else
-                setStatus(L"Could not start t6.exe (is it next to config.exe?)");
+                setStatus(L"Could not start t6br.exe (is it next to config.exe?)");
         }
         return 0;
     }

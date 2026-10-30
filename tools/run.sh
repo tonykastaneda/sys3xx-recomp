@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dev run of build/t6.exe against the repo's game/ dump. Extra env passes through.
+# Dev run of build/t6br.exe against the repo's game/ dump. Extra env passes through.
 #   tools/run.sh [seconds] [log]
 root="$(cd "$(dirname "$0")/.." && pwd)"
 secs="${1:-60}"; log="${2:-$root/out/run/latest.log}"
@@ -11,4 +11,4 @@ export MSYS2_ENV_CONV_EXCL="PS3_BOOT_PATH;PS3_ARGV"
 export PS3_BOOT_PATH="/dev_hdd0/game/SCEEXE000/USRDIR/GAME_208.SELF"
 export SPURS_QUEUE_LAYOUT="${SPURS_QUEUE_LAYOUT:-2}" SPURS_QUEUE_PUSH="${SPURS_QUEUE_PUSH:-1}" SPURS_JC_DONE_EVENTS="${SPURS_JC_DONE_EVENTS:-0}"
 export PS3_ARGV="${PS3_ARGV:-ver=206;romver=B23;livemon=0;usbid=026450000000;usbnum=1;idpath=/dev_usb000/T6.ID;datainfo=DINF_004.BIN}"
-timeout "$secs" "$root/build/${T6_EXE:-t6}.exe" "$(cygpath -m "$root/elf/GAME_208.elf")" > "$log" 2>&1
+timeout "$secs" "$root/build/${T6_EXE:-t6br}.exe" "$(cygpath -m "$root/elf/GAME_208.elf")" > "$log" 2>&1

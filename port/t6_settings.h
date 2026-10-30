@@ -1,4 +1,4 @@
-// t6.ini: shared by config.exe (writes it) and t6.exe (reads it). Header-only, Win32.
+// t6.ini: shared by config.exe (writes it) and t6br.exe (reads it). Header-only, Win32.
 //
 // [Video]
 // Resolution=1080p        Original | 720p | 1080p | 1440p
@@ -74,7 +74,7 @@ struct Settings {
     PlayerBinds players[2];
     SystemBinds system;
     int controller[2] = {0, 1};   // XInput pad per player (0..3), -1 = none (keyboard only)
-    std::string gamePath;   // [Paths] Game=, empty = the "game" folder next to t6.exe
+    std::string gamePath;   // [Paths] Game=, empty = the "game" folder next to t6br.exe
 };
 
 // Point every pad binding of a player at that player's controller (button kept).
@@ -236,7 +236,7 @@ inline bool saveSettings(P path_, const Settings& s)
     fprintf(f, "\n[System]\n");
     for (int a = 0; a < kSystemActionCount; a++)
         fprintf(f, "%s=%s\n", kSystemActionKeys[a], bindingText(s.system.b[a]).c_str());
-    fprintf(f, "\n[Paths]\n; Folder with the extracted game (it holds dev_hdd0). Empty = the \"game\" folder next to t6.exe.\nGame=%s\n",
+    fprintf(f, "\n[Paths]\n; Folder with the extracted game (it holds dev_hdd0). Empty = the \"game\" folder next to t6br.exe.\nGame=%s\n",
             s.gamePath.c_str());
     fclose(f);
     return true;
