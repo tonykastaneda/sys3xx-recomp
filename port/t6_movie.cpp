@@ -234,9 +234,9 @@ void hStreamTypeToEsFilterId(ppu_context* ctx)       // (u8 type, u8 ch, CellCod
 
 // ================================ demuxer ==================================
 constexpr uint32_t kErrDmuxArg = 0x80610201u, kErrDmuxEmpty = 0x80610204u, kErrDmuxFatal = 0x80610205u;
-constexpr uint32_t kRingBase = 0xC8000000u, kRingSize = 0x00800000u;   // 8 MB per ES, 8 ES slots
-constexpr uint32_t kInfoBase = 0xCC000000u;                            // CellDmuxAuInfo slots
-constexpr uint32_t kMsgBase = 0xCC800000u;                             // CellDmux(Es)Msg slots
+constexpr uint32_t kRingBase = 0x60000000u, kRingSize = 0x00800000u;   // 8 MB per ES, 8 ES slots (guest scratch, not VRAM)
+constexpr uint32_t kInfoBase = 0x64000000u;                            // CellDmuxAuInfo slots
+constexpr uint32_t kMsgBase = 0x64800000u;                             // CellDmux(Es)Msg slots
 constexpr int kMaxEs = 8, kInfoSlots = 256;
 
 struct Au { uint32_t addr, size; uint64_t pts, dts, user; bool rap; };

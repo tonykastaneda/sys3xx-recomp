@@ -54,7 +54,7 @@ void log(const char* fmt, ...)
 
 // ---- calling guest code from the USB thread -------------------------------------------
 // A private guest stack: ppu_guest_call's scratch stack is shared by every host thread.
-constexpr uint32_t kCbStackTop = 0xCF7F0000u;   // below the descriptor block, above thread stacks' range start
+constexpr uint32_t kCbStackTop = 0x6F7F0000u;   // guest scratch outside every PS3 region (not RSX VRAM)
 constexpr uint32_t kTlsTp = 0x10F07000u;        // PPU_TLS_TP (main thread TLS pointer)
 
 const func_entry* findFunc(uint32_t code)
@@ -103,7 +103,7 @@ struct Device {
     uint32_t privateData;
 };
 constexpr int kUsio = 1, kKey = 2;
-constexpr uint32_t kDescBase = 0xCF800000u;     // guest copy of the static descriptors
+constexpr uint32_t kDescBase = 0x6F800000u;     // guest copy of the static descriptors
 Device g_devs[2];
 
 Device* findDev(int id)
@@ -691,7 +691,7 @@ void hPamfStreamTypeToEsFilterId(ppu_context* ctx)
 // ---- movies: a demuxer that finds nothing ------------------------------------------------
 // Paired with the empty PAMF reader: every stream handed in is reported consumed
 // (DEMUX_DONE), no access unit is ever produced, and flushes complete at once.
-constexpr uint32_t kDmuxMsgBase = 0xCF820000u;   // guest scratch for CellDmuxMsg / CellDmuxEsMsg
+constexpr uint32_t kDmuxMsgBase = 0x6F820000u;   // guest scratch for CellDmuxMsg / CellDmuxEsMsg
 struct DmuxEs { uint32_t cb = 0, arg = 0; bool used = false; };
 struct Dmux { uint32_t cb = 0, arg = 0; bool used = false; DmuxEs es[8]; } g_dmux[4];
 std::atomic<uint32_t> g_dmuxMsgSlot{0};
