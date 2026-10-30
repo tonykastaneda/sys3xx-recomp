@@ -231,6 +231,18 @@ static int t6_usleep_who(uint32_t lr, uint64_t)
 }
 
 extern "C" void t6_prof_watch_self(void);
+extern "C" void t6_io_shutdown(void);
+
+/* The window this thread created (the backend makes it in rsx_backend_init). */
+static HWND own_window(void)
+{
+    HWND found = NULL;
+    EnumThreadWindows(GetCurrentThreadId(), [](HWND h, LPARAM l) -> BOOL {
+        if (!GetWindow(h, GW_OWNER) && IsWindowVisible(h)) { *(HWND*)l = h; return FALSE; }
+        return TRUE; }, (LPARAM)&found);
+    return found;
+}
+
 static DWORD WINAPI frame_clock(LPVOID)
 {
     t6_prof_watch_self();
@@ -244,6 +256,8 @@ static DWORD WINAPI frame_clock(LPVOID)
 
     unsigned  last_flip = 0;
     ULONGLONG next_tick = GetTickCount64();
+    /* The game's frame rate (its flips per second) in the window title, once a second. */
+    HWND title_hwnd = NULL; ULONGLONG title_t0 = GetTickCount64(); unsigned title_f0 = 0;
 
     /* T6_FPS_LOG: where this thread's time goes (ms per 5 s). */
     static LARGE_INTEGER qf; QueryPerformanceFrequency(&qf);
@@ -312,9 +326,27 @@ static DWORD WINAPI frame_clock(LPVOID)
             struct PumpT { long long a; double* t; LARGE_INTEGER* f; ~PumpT() { LARGE_INTEGER c; QueryPerformanceCounter(&c); *t += (c.QuadPart - a) * 1000.0 / f->QuadPart; } } pumpT{q4, &tm[3], &qf};
 
             if (rsx_backend_pump() != 0) {
-                rsx_ok = 0;              /* window closed */
+                /* Window closed: end the game. Stopping only the window left the guest
+                 * running headless, its sound still playing. Save the operator data
+                 * (bookkeeping, settings) first; the guest's threads are not joined. */
+                rsx_ok = 0;
+                fprintf(stderr, "[t6] window closed -- exiting\n");
+                t6_io_shutdown();
+                fflush(stdout); fflush(stderr);
+                TerminateProcess(GetCurrentProcess(), 0);
                 continue;
             }
+            { const ULONGLONG t = GetTickCount64();
+              if (t - title_t0 >= 1000) {
+                  const unsigned f = cellGcm_flip_request_count();
+                  if (!title_hwnd) title_hwnd = own_window();
+                  if (title_hwnd && title_f0) {
+                      char tb[256];
+                      snprintf(tb, sizeof tb, "%s - %.0f fps", title, (f - title_f0) * 1000.0 / (double)(t - title_t0));
+                      SetWindowTextA(title_hwnd, tb);
+                  }
+                  title_f0 = f; title_t0 = t;
+              } }
             /* Present on a guest flip. A present on a fixed clock can catch the
              * drain mid-frame and flash a partial one. Before the first flip
              * present freely, so the window is not blank during boot. */
