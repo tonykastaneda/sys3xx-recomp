@@ -63,5 +63,5 @@ Started from t6-arcade-recomp (port/, tools/, config/, ps3recomp branch t6). Wha
   (launcher default) dumps chains/guards/flags to the log when frames stall 4 s. The ring halves
   are guarded (JobGuardNotify after the PPU resets the next half), so it is not the stale-half
   race; next time it happens the watchdog output says where.
-- Open: fights ~56-58 fps (T6 is ~61), unresolved sysPrxForUser 0xE76964F5 / 0x45FE2FCE and
+- Open: unresolved sysPrxForUser 0xE76964F5 / 0x45FE2FCE and
   cellSpurs 0xA121A224 (harmless so far), 4:3 aspect constants, config.exe / package.
