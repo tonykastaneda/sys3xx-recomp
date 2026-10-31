@@ -23,7 +23,7 @@ guest addresses are offsets into it (big-endian, so every load and store byte-sw
 
 | Layer | Folder | Shared by | What lives there |
 |---|---|---|---|
-| Runtime | `ps3recomp/` (submodule, branch `sys3xx`) | every PS3 game | PPU/SPU lifters, lv2 syscalls, HLE libraries, SPURS, the RSX renderer, FFmpeg codecs |
+| Runtime | `ps3recomp/` (vendored copy of upstream ps3recomp, MIT) | every PS3 game | PPU/SPU lifters, lv2 syscalls, HLE libraries, SPURS, the RSX renderer, FFmpeg codecs |
 | Arcade core | `core/` | every System 3xx game | launcher, USIO I/O board over cellUsbd, movie player (cellPamf/cellDmux), settings/ini, main loop, profiler |
 | Game | `games/<id>/` | one game | profile, script settings, native patches, notes |
 
